@@ -11,15 +11,12 @@ Provides:
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import timedelta
 
 from app.db.database import get_db
 from app.core.config import settings
 from app.core.security import (
     verify_password,
     get_password_hash,
-    create_access_token,
-    create_refresh_token,
     decode_access_token,
     decode_refresh_token,
     generate_password_reset_token,
@@ -40,6 +37,7 @@ from app.services.membership_service import MembershipService, MembershipPlatfor
 from app.dependencies import get_current_user
 from app.schemas.auth import SSORequest, UserProfile
 from app.core.config import settings
+from app.utils import create_user_tokens
 import httpx
 import logging
 import secrets
@@ -48,32 +46,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
-
-
-def _create_tokens(user) -> Token:
-    """Helper to create both access and refresh tokens for a user."""
-    access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    
-    access_token = create_access_token(
-        data={
-            "sub": user.username,
-            "user_id": user.id,
-            "tier": user.tier.value,
-            "is_admin": user.is_admin,
-        },
-        expires_delta=access_token_expires
-    )
-    
-    refresh_token = create_refresh_token(
-        data={"user_id": user.id}
-    )
-    
-    return Token(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    )
 
 
 @router.post("/login", response_model=Token)
@@ -102,7 +74,7 @@ async def login(
             detail="User account is inactive"
         )
     
-    return _create_tokens(user)
+    return create_user_tokens(user)
 
 
 @router.post("/refresh", response_model=Token)
@@ -144,7 +116,7 @@ async def refresh_token(
             detail="User account is inactive"
         )
     
-    return _create_tokens(user)
+    return create_user_tokens(user)
 
 
 @router.post("/verify", response_model=UserVerify)

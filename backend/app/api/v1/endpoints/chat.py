@@ -27,7 +27,12 @@ from app.core.exceptions import UsageLimitExceededError, to_http_exception
 from app.core.constants import CHAT_HISTORY_DEFAULT_LIMIT, CHAT_HISTORY_MAX_LIMIT
 from app.api.v1.decorators import handle_service_errors, validate_input
 from app.dependencies import get_current_user
-from app.utils.text import sanitize_user_input, validate_message_content
+from app.utils import (
+    sanitize_user_input,
+    validate_message_content,
+    convert_conversation_history,
+    check_usage_limit_dependency,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -39,7 +44,7 @@ logger = logging.getLogger(__name__)
 async def send_message(
     request: ChatRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(check_usage_limit_dependency)
 ):
     """
     Send a chat message and get AI response.
@@ -47,37 +52,11 @@ async def send_message(
     The message is processed through the RAG pipeline with context
     from the knowledge base.
     """
-    # Validate and sanitize input
-    is_valid, error_msg = validate_message_content(request.message)
-    if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
-        )
-    
+    # Sanitize input (validation handled by @validate_input decorator)
     sanitized_message = sanitize_user_input(request.message)
     
-    # Check usage limits (raises UsageLimitExceededError if exceeded)
-    usage_service = UsageService(db)
-    try:
-        await usage_service.check_usage_limit(
-            current_user["user_id"], 
-            current_user["tier"]
-        )
-    except UsageLimitExceededError as e:
-        http_exc = to_http_exception(e)
-        raise HTTPException(
-            status_code=http_exc.status_code,
-            detail=e.to_dict()
-        )
-    
     # Convert conversation history
-    history = None
-    if request.conversation_history:
-        history = [
-            {"role": msg.role, "content": msg.content}
-            for msg in request.conversation_history
-        ]
+    history = convert_conversation_history(request.conversation_history)
     
     # Process message
     chat_service = ChatService(db)
@@ -90,6 +69,7 @@ async def send_message(
     )
     
     # Track usage
+    usage_service = UsageService(db)
     await usage_service.record_usage(
         user_id=current_user["user_id"],
         tokens_used=response.tokens_used
@@ -102,7 +82,7 @@ async def send_message(
 async def send_message_stream(
     request: ChatRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(check_usage_limit_dependency)
 ):
     """
     Send a chat message and get streaming AI response via Server-Sent Events.
@@ -123,27 +103,8 @@ async def send_message_stream(
     });
     ```
     """
-    # Check usage limits (raises UsageLimitExceededError if exceeded)
-    usage_service = UsageService(db)
-    try:
-        await usage_service.check_usage_limit(
-            current_user["user_id"], 
-            current_user["tier"]
-        )
-    except UsageLimitExceededError as e:
-        http_exc = to_http_exception(e)
-        raise HTTPException(
-            status_code=http_exc.status_code,
-            detail=e.to_dict()
-        )
-    
     # Convert conversation history
-    history = None
-    if request.conversation_history:
-        history = [
-            {"role": msg.role, "content": msg.content}
-            for msg in request.conversation_history
-        ]
+    history = convert_conversation_history(request.conversation_history)
     
     # Create streaming response
     chat_service = ChatService(db)
@@ -320,6 +281,7 @@ async def websocket_chat(websocket: WebSocket):
                     
                     # Get message content
                     message_content = data.get("content", "")
+                    # Note: conversation_history from WebSocket is already in dict format
                     conversation_history = data.get("conversation_history", [])
                     include_sources = data.get("include_sources", False)
                     

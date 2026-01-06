@@ -64,7 +64,7 @@ def validate_input(func: Callable) -> Callable:
         for arg in args:
             if hasattr(arg, '__dict__') and hasattr(arg, 'message'):
                 # Validate message content if present
-                from app.utils.text import validate_message_content
+                from app.utils import validate_message_content
                 if hasattr(arg, 'message') and arg.message:
                     is_valid, error_msg = validate_message_content(arg.message)
                     if not is_valid:

@@ -22,19 +22,29 @@ app/
 │
 ├── api/                 # API routes
 │   └── v1/
-│       ├── router.py    # Main API router
-│       └── endpoints/   # Individual endpoint modules
-│           ├── admin.py     # Admin & knowledge management
-│           ├── auth.py      # Authentication endpoints
-│           ├── chat.py      # Chat endpoints
-│           └── usage.py     # Usage tracking endpoints
+│       ├── __init__.py      # API v1 exports
+│       ├── router.py        # Main API router
+│       ├── decorators.py    # API decorators (error handling, validation)
+│       └── endpoints/       # Individual endpoint modules
+│           ├── __init__.py      # Endpoint exports
+│           ├── admin.py         # Admin & knowledge management
+│           ├── auth.py          # Authentication endpoints
+│           ├── chat.py          # Chat endpoints
+│           ├── membership.py    # Membership platform integration
+│           └── usage.py         # Usage tracking endpoints
 │
 ├── core/                # Core configuration and utilities
-│   ├── __init__.py      # Core module exports
-│   ├── clients.py       # Shared OpenAI/Pinecone clients
-│   ├── config.py        # Application settings (.env loading)
-│   ├── security.py      # JWT and password hashing
-│   └── prompts/         # Prompt engineering system
+│   ├── __init__.py          # Core module exports
+│   ├── clients.py           # Shared OpenAI/Pinecone clients
+│   ├── config.py            # Application settings (.env loading)
+│   ├── constants.py         # Application-wide constants
+│   ├── exceptions.py        # Custom exception classes
+│   ├── performance.py       # Caching and performance utilities
+│   ├── permissions.py        # Role-based access control (RBAC)
+│   ├── query_helpers.py     # Database query optimization
+│   ├── rate_limiter.py      # Rate limiting utilities
+│   ├── security.py          # JWT and password hashing
+│   └── prompts/             # Prompt engineering system
 │       ├── __init__.py      # Package exports
 │       ├── persona.py       # PersonaConfig, DEFAULT_PERSONA
 │       ├── context.py       # ConversationContext, detection
@@ -42,28 +52,40 @@ app/
 │       └── fallbacks.py     # Fallback responses
 │
 ├── db/                  # Database layer
-│   ├── __init__.py
-│   ├── database.py      # Database connection and session
-│   └── models.py        # SQLAlchemy models
+│   ├── __init__.py          # Database module exports
+│   ├── database.py          # Database connection and session
+│   └── models.py            # SQLAlchemy models
 │
 ├── schemas/             # Pydantic schemas (request/response)
-│   ├── __init__.py      # Schema exports
-│   ├── auth.py          # Token, UserLogin schemas
-│   ├── chat.py          # ChatRequest, ChatResponse
-│   ├── knowledge.py     # Knowledge base schemas
-│   └── usage.py         # Usage tracking schemas
+│   ├── __init__.py          # Schema exports
+│   ├── auth.py              # Token, UserLogin schemas
+│   ├── chat.py              # ChatRequest, ChatResponse
+│   ├── common.py            # Common schemas (ApiResponse, PaginatedResponse)
+│   ├── knowledge.py         # Knowledge base schemas
+│   ├── logging.py           # Logging schemas (MissingKBItem, QuestionLog)
+│   └── usage.py             # Usage tracking schemas
 │
 ├── services/            # Business logic layer
-│   ├── __init__.py      # Service exports
+│   ├── __init__.py          # Service exports
+│   ├── base.py              # BaseService class with common CRUD operations
 │   ├── chat_service.py      # Chat and AI processing
 │   ├── knowledge_service.py # Knowledge base management
+│   ├── membership_service.py # Membership platform integration
 │   ├── rag_service.py       # RAG (embeddings, vector search)
 │   ├── usage_service.py     # Usage tracking and limits
 │   └── user_service.py      # User operations
 │
+├── middleware/          # Custom middleware
+│   ├── __init__.py          # Middleware exports
+│   └── rate_limit.py        # Rate limiting middleware
+│
 └── utils/               # Shared utility functions
-    ├── __init__.py      # Utility exports
-    └── text.py          # Text manipulation (truncate, sanitize)
+    ├── __init__.py          # Utility exports
+    ├── conversation.py      # Conversation history helpers
+    ├── cost_calculator.py   # API cost estimation
+    ├── text.py              # Text manipulation (sanitize, validate, truncate)
+    ├── tokens.py            # Token creation utilities
+    └── usage.py              # Usage limit checking dependency
 ```
 
 ### `scripts/` - Utility Scripts

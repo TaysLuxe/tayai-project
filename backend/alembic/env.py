@@ -1,3 +1,10 @@
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Set up path and load .env file BEFORE any other imports
+backend_dir = Path(__file__).resolve().parent.parent
+load_dotenv(backend_dir.parent / ".env")
+
 from logging.config import fileConfig
 import asyncio
 from sqlalchemy import pool
@@ -9,15 +16,9 @@ from alembic import context
 # Import models and Base for autogenerate support
 import sys
 import os
-from pathlib import Path
 
 # Add the backend directory to the path so we can import app
-backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir))
-
-# Load environment variables and fix potential issues BEFORE importing anything
-from dotenv import load_dotenv
-load_dotenv(backend_dir.parent / ".env")
 
 # Fix BACKEND_CORS_ORIGINS if it's empty or invalid
 cors_origins = os.getenv("BACKEND_CORS_ORIGINS", "")

@@ -1,14 +1,12 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 """
 Application Configuration
 
 Loads environment variables from .env file and provides
 typed configuration settings for the application.
 """
-from dotenv import load_dotenv
-
-# Load .env file BEFORE any os.getenv() calls
-load_dotenv()
-
 from pydantic_settings import BaseSettings
 from typing import List
 import os
