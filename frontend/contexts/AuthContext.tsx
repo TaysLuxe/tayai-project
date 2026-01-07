@@ -1,0 +1,116 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authAPI } from '@/lib/api';
+
+interface User {
+  user_id: number;
+  username: string;
+  tier: string;
+  is_admin: boolean;
+}
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => void;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const userData = await authAPI.verify();
+          if (userData.valid) {
+            setUser({
+              user_id: userData.user_id,
+              username: userData.username,
+              tier: userData.tier,
+              is_admin: userData.is_admin,
+            });
+          } else {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+          }
+        } catch (error) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        }
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, []);
+
+  const login = async (username: string, password: string) => {
+    const response = await authAPI.login(username, password);
+    localStorage.setItem('access_token', response.access_token);
+    localStorage.setItem('refresh_token', response.refresh_token);
+    
+    const userData = await authAPI.verify();
+    setUser({
+      user_id: userData.user_id,
+      username: userData.username,
+      tier: userData.tier,
+      is_admin: userData.is_admin,
+    });
+  };
+
+  const logout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    setUser(null);
+  };
+
+  const refreshUser = async () => {
+    try {
+      const userData = await authAPI.verify();
+      if (userData.valid) {
+        setUser({
+          user_id: userData.user_id,
+          username: userData.username,
+          tier: userData.tier,
+          is_admin: userData.is_admin,
+        });
+      }
+    } catch (error) {
+      logout();
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+        login,
+        logout,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
