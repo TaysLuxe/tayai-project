@@ -1,0 +1,6 @@
+This is a sample text file.
+
+Created on: 2026-01-09
+Branch: feature/sample-file
+
+This file can be used for testing or documentation purposes.
