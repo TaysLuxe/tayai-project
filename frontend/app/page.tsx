@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import ChatWidget from '@/components/ChatWidget';
 import { useState } from 'react';
-import { authAPI } from '@/lib/api';
+import { authApi } from '@/lib/api';
 
 export default function Home() {
   const { isAuthenticated, login, logout, user, loading } = useAuth();
