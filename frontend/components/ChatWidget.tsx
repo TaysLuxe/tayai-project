@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { chatAPI } from '@/lib/api';
+import { chatApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
