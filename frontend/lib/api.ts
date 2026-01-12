@@ -50,17 +50,17 @@ async function fetchApi<T>(
 
 // Auth API
 export const authApi = {
-  login: async (email: string, password: string) => {
-    return fetchApi('/auth/login', {
+  login: async (username: string, password: string) => {
+    return fetchApi<{ access_token: string; refresh_token: string }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
   },
 
-  register: async (email: string, password: string, name?: string) => {
+  register: async (username: string, password: string, email?: string) => {
     return fetchApi('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ username, password, email }),
     });
   },
 
@@ -79,14 +79,30 @@ export const authApi = {
       method: 'POST',
     });
   },
+
+  verify: async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    return fetchApi<{
+      valid: boolean;
+      user_id: number;
+      username: string;
+      tier: string;
+      is_admin: boolean;
+    }>('/auth/verify', {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
 };
 
 // Chat API
 export const chatApi = {
-  sendMessage: async (message: string, conversationId?: string) => {
-    return fetchApi('/chat/message', {
+  sendMessage: async (message: string, conversationHistory?: Array<{ role: string; content: string }>) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    return fetchApi<{ response: string; sources?: Array<{ title: string; content: string }> }>('/chat/message', {
       method: 'POST',
-      body: JSON.stringify({ message, conversationId }),
+      body: JSON.stringify({ message, conversation_history: conversationHistory }),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
   },
 
