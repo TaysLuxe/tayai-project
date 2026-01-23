@@ -6,10 +6,11 @@ FROM base AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
+COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with cache mount for faster builds
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -17,6 +18,9 @@ WORKDIR /app
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy package files for build
+COPY package.json package-lock.json ./
 
 # Copy all source files
 COPY . .
