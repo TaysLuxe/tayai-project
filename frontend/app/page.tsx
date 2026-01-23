@@ -1,19 +1,21 @@
+/**
+ * Home Page Component
+ */
+
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import ChatWidget from '@/components/ChatWidget';
+import { LoginForm, LoadingSpinner } from '@/components/ui';
 import { useState } from 'react';
 import { authApi } from '@/lib/api';
 
 export default function Home() {
   const { isAuthenticated, login, logout, user, loading } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (username: string, password: string) => {
     setLoginError('');
     setIsLoggingIn(true);
     
@@ -29,10 +31,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+        <LoadingSpinner message="Loading..." />
       </div>
     );
   }
@@ -48,51 +47,11 @@ export default function Home() {
             AI-powered assistant for hair business mentorship
           </p>
           
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Enter your username"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Enter your password"
-              />
-            </div>
-            
-            {loginError && (
-              <div className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded">
-                {loginError}
-              </div>
-            )}
-            
-            <button
-              type="submit"
-              disabled={isLoggingIn}
-              className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoggingIn ? 'Logging in...' : 'Login'}
-            </button>
-          </form>
+          <LoginForm
+            onSubmit={handleLogin}
+            error={loginError}
+            loading={isLoggingIn}
+          />
         </div>
       </div>
     );
@@ -127,4 +86,3 @@ export default function Home() {
     </div>
   );
 }
-

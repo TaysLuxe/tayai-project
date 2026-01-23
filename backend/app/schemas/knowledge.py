@@ -34,6 +34,7 @@ class KnowledgeBaseCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     content: str = Field(..., min_length=10)
     category: Optional[str] = Field(None, max_length=100)
+    namespace: Optional[str] = Field(None, max_length=100, description="KB namespace for organized retrieval")
     metadata: Optional[str] = None
 
 
@@ -42,6 +43,7 @@ class KnowledgeBaseUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     content: Optional[str] = Field(None, min_length=10)
     category: Optional[str] = Field(None, max_length=100)
+    namespace: Optional[str] = Field(None, max_length=100, description="KB namespace for organized retrieval")
     metadata: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -51,6 +53,7 @@ class BulkUploadItem(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     content: str = Field(..., min_length=10)
     category: Optional[str] = Field(None, max_length=100)
+    namespace: Optional[str] = Field(None, max_length=100, description="KB namespace for organized retrieval")
 
 
 class BulkUploadRequest(BaseModel):

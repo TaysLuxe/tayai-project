@@ -2,13 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authApi } from '@/lib/api';
-
-interface User {
-  user_id: number;
-  username: string;
-  tier: string;
-  is_admin: boolean;
-}
+import { tokenStorage } from '@/utils/storage';
+import type { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
@@ -28,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if user is already logged in
     const checkAuth = async () => {
-      const token = localStorage.getItem('access_token');
+      const token = tokenStorage.getAccessToken();
       if (token) {
         try {
           const userData = await authApi.verify();
@@ -40,12 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               is_admin: userData.is_admin,
             });
           } else {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
+            tokenStorage.removeTokens();
           }
         } catch (error) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
+          tokenStorage.removeTokens();
         }
       }
       setLoading(false);
@@ -56,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     const response = await authApi.login(username, password);
-    localStorage.setItem('access_token', response.access_token);
-    localStorage.setItem('refresh_token', response.refresh_token);
+    tokenStorage.setAccessToken(response.access_token);
+    tokenStorage.setRefreshToken(response.refresh_token);
     
     const userData = await authApi.verify();
     setUser({
@@ -69,8 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    tokenStorage.removeTokens();
     setUser(null);
   };
 

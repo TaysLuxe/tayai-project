@@ -350,3 +350,6 @@ config.local.py
 *.wav
 *.flac
 *.aac
+
+# Data directory (source files - processed into knowledge base)
+backend/data/

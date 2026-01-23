@@ -98,6 +98,37 @@ class MissingKBStats(BaseModel):
     total_resolved: int
     by_namespace: Dict[str, int]
     recent_items: List[MissingKBItem]
+    this_week: int  # Items from last 7 days
+    priority_items: int  # High priority items (frequently asked or low RAG score)
+
+
+class MissingKBDashboardItem(BaseModel):
+    """Enhanced missing KB item for dashboard display."""
+    id: int
+    question: str
+    missing_detail: str
+    suggested_namespace: Optional[str]
+    user_id: int
+    is_resolved: bool
+    created_at: datetime
+    resolved_at: Optional[datetime] = None
+    resolved_by_kb_id: Optional[int] = None
+    # Dashboard-specific fields
+    frequency: int = 1  # How many times this question was asked
+    priority: str = "medium"  # high, medium, low
+    rag_score: Optional[float] = None  # RAG score when detected
+    user_tier: Optional[str] = None
+    context_type: Optional[str] = None
+    upload_guidance: Optional[str] = None  # What to upload to resolve this
+
+
+class MissingKBDashboard(BaseModel):
+    """Complete dashboard view for missing KB items."""
+    stats: MissingKBStats
+    items: List[MissingKBDashboardItem]
+    total_items: int
+    page: int = 1
+    page_size: int = 50
 
 
 class QuestionStats(BaseModel):
@@ -147,4 +178,60 @@ class LoggingStatsResponse(BaseModel):
     """Complete logging statistics response."""
     missing_kb: MissingKBStats
     questions: QuestionStats
+
+
+# =============================================================================
+# Escalation Log Models
+# =============================================================================
+
+class EscalationLogBase(BaseModel):
+    """Base model for escalation log."""
+    question: str = Field(..., description="Original user question")
+    offer: str = Field(..., description="Offer mentioned (mentorship, course, etc.)")
+    escalation_reason: Optional[str] = Field(None, description="Why escalated")
+
+
+class EscalationLogCreate(EscalationLogBase):
+    """Request to create an escalation log entry."""
+    user_id: int
+    context_type: Optional[str] = None
+    user_tier: Optional[str] = None
+    chat_message_id: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = Field(None, alias="extra_metadata")
+    
+    class Config:
+        populate_by_name = True
+
+
+class EscalationLogUpdate(BaseModel):
+    """Request to update an escalation log (e.g., mark conversion)."""
+    converted: Optional[bool] = None
+    conversion_tracked: Optional[bool] = None
+
+
+class EscalationLog(EscalationLogBase):
+    """Escalation log entry from database."""
+    id: int
+    user_id: int
+    context_type: Optional[str] = None
+    user_tier: Optional[str] = None
+    chat_message_id: Optional[int] = None
+    conversion_tracked: bool
+    converted: Optional[bool] = None
+    converted_at: Optional[datetime] = None
+    created_at: datetime
+    metadata: Optional[Dict[str, Any]] = Field(None, alias="extra_metadata")
+    
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class EscalationStats(BaseModel):
+    """Statistics about escalations."""
+    total_escalations: int
+    by_offer: Dict[str, int]
+    conversion_rate: float  # % of escalations that converted
+    by_reason: Dict[str, int]
+    recent_escalations: List[EscalationLog]
 

@@ -73,7 +73,13 @@ app/
 │   ├── membership_service.py # Membership platform integration
 │   ├── rag_service.py       # RAG (embeddings, vector search)
 │   ├── usage_service.py     # Usage tracking and limits
-│   └── user_service.py      # User operations
+│   ├── user_service.py      # User operations
+│   └── helpers/             # Service helper modules
+│       ├── __init__.py
+│       ├── missing_kb_detector.py
+│       ├── escalation_handler.py
+│       ├── response_generator.py
+│       └── namespace_mapper.py
 │
 ├── middleware/          # Custom middleware
 │   ├── __init__.py          # Middleware exports
@@ -93,9 +99,17 @@ app/
 ```
 scripts/
 ├── __init__.py
-├── import_content.py        # Import custom content from content/
-├── init_pinecone.py         # Pinecone index management
-└── seed_knowledge_base.py   # Initial knowledge base seeding
+├── README.md                # Scripts documentation
+├── build_foundational_kb.py # Build KB from source files
+├── kb_coverage_checker.py   # Analyze KB coverage
+├── kb_namespace_mapper.py   # Map content to namespaces
+├── weekly_kb_review.py      # Generate weekly reports
+├── process_ig_posts.py      # Process Instagram posts
+├── download_zoom_transcripts.py  # Download transcripts
+├── transcribe_recordings.py # Transcribe audio files
+└── tests/                   # Test scripts
+    ├── simple_test.py
+    └── transcribe_test.py
 ```
 
 ### `tests/` - Automated Tests
@@ -125,14 +139,38 @@ frontend/
 │
 ├── components/          # React Components
 │   ├── __init__.ts
-│   └── ChatWidget.tsx   # Main chat interface
+│   ├── ChatWidget.tsx   # Main chat interface
+│   └── ui/              # Reusable UI components
+│       ├── LoginForm.tsx
+│       ├── MessageItem.tsx
+│       ├── MessageList.tsx
+│       ├── ChatInput.tsx
+│       ├── LoadingSpinner.tsx
+│       ├── LoadingIndicator.tsx
+│       ├── ErrorAlert.tsx
+│       └── index.ts
 │
 ├── contexts/            # React Contexts
 │   ├── __init__.ts
 │   └── AuthContext.tsx  # Authentication state
 │
-└── lib/                 # Utilities
-    └── api.ts           # API client
+├── lib/                 # Library code
+│   └── api/             # API clients
+│       ├── auth.ts      # Authentication API
+│       ├── chat.ts      # Chat API
+│       └── index.ts     # API exports
+│
+├── types/               # TypeScript type definitions
+│   └── index.ts
+│
+├── utils/               # Utility functions
+│   ├── api.ts           # API helpers
+│   └── storage.ts       # Storage utilities
+│
+├── constants/           # Application constants
+│   └── index.ts
+│
+└── hooks/               # Custom React hooks (future)
 ```
 
 ## Content Directory (`content/`)
@@ -150,17 +188,41 @@ content/
     └── _example-course.md  # Example template
 ```
 
+## Documentation Structure
+
+All documentation is organized in the `docs/` directory:
+
+```
+docs/
+├── specifications/    # Core specs and architecture
+│   ├── TAY_AI_SPECIFICATION.md
+│   ├── ARCHITECTURE.md
+│   ├── DATABASE_SCHEMA.md
+│   ├── SECURITY_AUDIT.md
+│   └── PROJECT_STRUCTURE.md (this file)
+├── implementation/    # Implementation guides and summaries
+│   ├── ACCOUNTABILITY_*.md
+│   ├── ESCALATION_*.md
+│   ├── KB_*.md
+│   ├── TIER_BASED_*.md
+│   └── ... (25+ implementation docs)
+└── guides/            # User and developer guides
+    ├── ADMIN_GUIDE.md
+    ├── USER_GUIDE.md
+    ├── API_DOCUMENTATION.md
+    ├── RAILWAY_DEPLOYMENT_GUIDE.md
+    └── ... (7 guide docs)
+```
+
 ## Configuration Files
 
 ### Root Level
 - `.env.example` - Environment variable template
 - `.gitignore` - Git ignore rules
 - `docker-compose.yml` - Docker services
+- `docker-compose.prod.yml` - Production Docker services
 - `README.md` - Project overview
-- `SETUP.md` - Setup instructions
-- `ARCHITECTURE.md` - System architecture
-- `DATABASE_SCHEMA.md` - Database design
-- `TAY_AI_SPECIFICATION.md` - Complete AI specification and behavior requirements
+- `LICENSE` - Project license
 
 ### Backend
 - `requirements.txt` - Python dependencies

@@ -16,7 +16,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 from app.db.database import get_db
-from app.db.models import User, ChatMessage, UsageTracking, UserTier, MissingKBItem, QuestionLog
+from app.db.models import User, ChatMessage, UsageTracking, UserTier, MissingKBItem, QuestionLog, EscalationLog
 from app.schemas.knowledge import (
     KnowledgeBaseItem,
     KnowledgeBaseCreate,
@@ -38,6 +38,11 @@ from app.schemas.logging import (
     MissingKBExport,
     QuestionExport,
     LoggingStatsResponse,
+    EscalationLog as EscalationLogSchema,
+    EscalationLogUpdate,
+    EscalationStats,
+    MissingKBDashboard,
+    MissingKBDashboardItem,
 )
 from app.schemas.chat import PersonaTestRequest, PersonaTestResponse
 from app.schemas.auth import UserResponse
@@ -717,26 +722,50 @@ async def get_missing_kb_stats(
     )
     recent_items = [MissingKBItemSchema.model_validate(item) for item in result.scalars().all()]
     
+    # This week (last 7 days)
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    result = await db.execute(
+        select(func.count(MissingKBItem.id))
+        .where(
+            MissingKBItem.is_resolved == False,
+            MissingKBItem.created_at >= week_ago
+        )
+    )
+    this_week = result.scalar() or 0
+    
+    # Priority items (low RAG score or frequently asked)
+    # For now, count items with low RAG scores in metadata
+    priority_items = total_unresolved  # Will be refined with frequency data
+    
     return MissingKBStats(
         total_unresolved=total_unresolved,
         total_resolved=total_resolved,
         by_namespace=by_namespace,
-        recent_items=recent_items
+        recent_items=recent_items,
+        this_week=this_week,
+        priority_items=priority_items
     )
 
 
 @router.get("/logs/missing-kb/export", response_model=List[MissingKBExport])
 async def export_missing_kb_items(
     unresolved_only: bool = Query(True),
-    export_format: str = Query("json", regex="^(json|csv)$", alias="format"),
+    export_format: str = Query("json", regex="^(json|csv|notion)$", alias="format"),
+    days: Optional[int] = Query(None, description="Only export items from last N days"),
     db: AsyncSession = Depends(get_db),
     admin: dict = Depends(get_current_admin)
 ):
     """Export missing KB items for Notion/Sheets/Airtable integration."""
+    from datetime import datetime, timedelta
+    
     query = select(MissingKBItem)
     
     if unresolved_only:
         query = query.where(MissingKBItem.is_resolved == False)
+    
+    if days:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        query = query.where(MissingKBItem.created_at >= cutoff_date)
     
     query = query.order_by(desc(MissingKBItem.created_at))
     
@@ -1001,4 +1030,397 @@ async def get_all_logging_stats(
         missing_kb=missing_kb_result,
         questions=question_result
     )
+
+
+# =============================================================================
+# Escalation Tracking
+# =============================================================================
+
+@router.get("/logs/escalations", response_model=List[EscalationLogSchema])
+async def list_escalations(
+    offer: Optional[str] = Query(None, description="Filter by offer type"),
+    converted_only: bool = Query(False, description="Show only converted escalations"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    admin: dict = Depends(get_current_admin)
+):
+    """List escalation logs for conversion tracking and optimization."""
+    query = select(EscalationLog)
+    
+    if offer:
+        query = query.where(EscalationLog.offer == offer)
+    
+    if converted_only:
+        query = query.where(EscalationLog.converted == True)
+    
+    query = query.order_by(desc(EscalationLog.created_at)).limit(limit).offset(offset)
+    
+    result = await db.execute(query)
+    items = list(result.scalars().all())
+    
+    return [EscalationLogSchema.model_validate(item) for item in items]
+
+
+@router.get("/logs/escalations/stats", response_model=EscalationStats)
+async def get_escalation_stats(
+    period_days: int = Query(30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    admin: dict = Depends(get_current_admin)
+):
+    """Get statistics about escalations to paid offerings."""
+    start_date = datetime.utcnow() - timedelta(days=period_days)
+    
+    # Total escalations
+    result = await db.execute(
+        select(func.count(EscalationLog.id))
+        .where(EscalationLog.created_at >= start_date)
+    )
+    total_escalations = result.scalar() or 0
+    
+    # By offer
+    result = await db.execute(
+        select(
+            EscalationLog.offer,
+            func.count(EscalationLog.id).label('count')
+        )
+        .where(EscalationLog.created_at >= start_date)
+        .group_by(EscalationLog.offer)
+    )
+    by_offer = {row.offer: row.count for row in result.all()}
+    
+    # By reason
+    result = await db.execute(
+        select(
+            EscalationLog.escalation_reason,
+            func.count(EscalationLog.id).label('count')
+        )
+        .where(EscalationLog.created_at >= start_date)
+        .group_by(EscalationLog.escalation_reason)
+    )
+    by_reason = {row.escalation_reason or "unspecified": row.count for row in result.all()}
+    
+    # Conversion rate
+    result = await db.execute(
+        select(func.count(EscalationLog.id))
+        .where(
+            EscalationLog.created_at >= start_date,
+            EscalationLog.converted == True
+        )
+    )
+    converted_count = result.scalar() or 0
+    conversion_rate = (converted_count / total_escalations * 100) if total_escalations > 0 else 0.0
+    
+    # Recent escalations
+    result = await db.execute(
+        select(EscalationLog)
+        .where(EscalationLog.created_at >= start_date)
+        .order_by(desc(EscalationLog.created_at))
+        .limit(10)
+    )
+    recent_escalations = [EscalationLogSchema.model_validate(item) for item in result.scalars().all()]
+    
+    return EscalationStats(
+        total_escalations=total_escalations,
+        by_offer=by_offer,
+        conversion_rate=round(conversion_rate, 2),
+        by_reason=by_reason,
+        recent_escalations=recent_escalations
+    )
+
+
+# =============================================================================
+# Missing KB Dashboard
+# =============================================================================
+
+@router.get("/dashboard/missing-kb", response_model=MissingKBDashboard)
+async def get_missing_kb_dashboard(
+    namespace: Optional[str] = Query(None, description="Filter by namespace"),
+    priority: Optional[str] = Query(None, regex="^(high|medium|low)$", description="Filter by priority"),
+    days: int = Query(7, ge=1, le=90, description="Show items from last N days"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=200, description="Items per page"),
+    sort_by: str = Query("created_at", regex="^(created_at|frequency|priority)$", description="Sort field"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sort order"),
+    db: AsyncSession = Depends(get_db),
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Get comprehensive dashboard view of missing KB items.
+    
+    This is the main dashboard for Jumar and Annika to review missing information,
+    prioritize uploads, and track the knowledge feedback loop.
+    """
+    from datetime import timedelta
+    
+    # Get stats
+    stats = await get_missing_kb_stats(db=db, admin=admin)
+    
+    # Build query
+    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    query = select(MissingKBItem).where(
+        MissingKBItem.is_resolved == False,
+        MissingKBItem.created_at >= cutoff_date
+    )
+    
+    if namespace:
+        query = query.where(MissingKBItem.suggested_namespace == namespace)
+    
+    # Get all items to calculate frequency
+    result = await db.execute(query)
+    all_items = result.scalars().all()
+    
+    # Group by question to calculate frequency
+    question_groups = {}
+    for item in all_items:
+        # Normalize question for grouping (simple approach)
+        normalized = item.question.lower().strip()[:100]  # First 100 chars
+        if normalized not in question_groups:
+            question_groups[normalized] = []
+        question_groups[normalized].append(item)
+    
+    # Build dashboard items with frequency
+    dashboard_items = []
+    for normalized_q, items in question_groups.items():
+        # Use the most recent item as the representative
+        representative = max(items, key=lambda x: x.created_at)
+        frequency = len(items)
+        
+        # Calculate priority
+        # High: frequently asked (3+) or low RAG score
+        rag_score = None
+        if representative.extra_metadata:
+            rag_score = representative.extra_metadata.get("rag_score")
+        
+        if frequency >= 3 or (rag_score is not None and rag_score < 0.5):
+            priority_level = "high"
+        elif frequency >= 2 or (rag_score is not None and rag_score < 0.7):
+            priority_level = "medium"
+        else:
+            priority_level = "low"
+        
+        # Filter by priority if requested
+        if priority and priority_level != priority:
+            continue
+        
+        # Extract upload guidance from metadata
+        upload_guidance = None
+        if representative.extra_metadata:
+            upload_guidance = representative.extra_metadata.get("upload_guidance")
+        
+        dashboard_item = MissingKBDashboardItem(
+            id=representative.id,
+            question=representative.question,
+            missing_detail=representative.missing_detail,
+            suggested_namespace=representative.suggested_namespace,
+            user_id=representative.user_id,
+            is_resolved=representative.is_resolved,
+            created_at=representative.created_at,
+            resolved_at=representative.resolved_at,
+            resolved_by_kb_id=representative.resolved_by_kb_id,
+            frequency=frequency,
+            priority=priority_level,
+            rag_score=rag_score,
+            user_tier=representative.extra_metadata.get("user_tier") if representative.extra_metadata else None,
+            context_type=representative.extra_metadata.get("context_type") if representative.extra_metadata else None,
+            upload_guidance=upload_guidance
+        )
+        dashboard_items.append(dashboard_item)
+    
+    # Sort items
+    if sort_by == "frequency":
+        dashboard_items.sort(key=lambda x: x.frequency, reverse=(sort_order == "desc"))
+    elif sort_by == "priority":
+        priority_order = {"high": 3, "medium": 2, "low": 1}
+        dashboard_items.sort(key=lambda x: priority_order.get(x.priority, 0), reverse=(sort_order == "desc"))
+    else:  # created_at
+        dashboard_items.sort(key=lambda x: x.created_at, reverse=(sort_order == "desc"))
+    
+    # Paginate
+    total_items = len(dashboard_items)
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated_items = dashboard_items[start_idx:end_idx]
+    
+    return MissingKBDashboard(
+        stats=stats,
+        items=paginated_items,
+        total_items=total_items,
+        page=page,
+        page_size=page_size
+    )
+
+
+@router.post("/dashboard/missing-kb/bulk-resolve")
+async def bulk_resolve_missing_kb(
+    item_ids: List[int],
+    resolved_by_kb_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Bulk mark missing KB items as resolved.
+    
+    Use this after uploading content to resolve multiple items at once.
+    """
+    if not item_ids:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No item IDs provided")
+    
+    result = await db.execute(
+        select(MissingKBItem).where(MissingKBItem.id.in_(item_ids))
+    )
+    items = result.scalars().all()
+    
+    if len(items) != len(item_ids):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Some items not found")
+    
+    now = datetime.utcnow()
+    for item in items:
+        item.is_resolved = True
+        item.resolved_at = now
+        if resolved_by_kb_id:
+            item.resolved_by_kb_id = resolved_by_kb_id
+    
+    await db.commit()
+    
+    return {
+        "resolved_count": len(items),
+        "message": f"Successfully resolved {len(items)} missing KB items"
+    }
+
+
+@router.get("/dashboard/missing-kb/weekly-review")
+async def get_weekly_review(
+    format: str = Query("json", regex="^(json|csv|notion)$", description="Export format"),
+    db: AsyncSession = Depends(get_db),
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Get weekly review export for Annika to upload content.
+    
+    This creates a prioritized list of missing KB items from the last 7 days,
+    formatted for easy review and content upload.
+    """
+    from datetime import timedelta
+    
+    cutoff_date = datetime.utcnow() - timedelta(days=7)
+    
+    result = await db.execute(
+        select(MissingKBItem)
+        .where(
+            MissingKBItem.is_resolved == False,
+            MissingKBItem.created_at >= cutoff_date
+        )
+        .order_by(desc(MissingKBItem.created_at))
+    )
+    
+    items = result.scalars().all()
+    
+    # Group by namespace for organized review
+    by_namespace = {}
+    for item in items:
+        namespace = item.suggested_namespace or "unspecified"
+        if namespace not in by_namespace:
+            by_namespace[namespace] = []
+        
+        # Extract metadata
+        upload_guidance = None
+        rag_score = None
+        if item.extra_metadata:
+            upload_guidance = item.extra_metadata.get("upload_guidance")
+            rag_score = item.extra_metadata.get("rag_score")
+        
+        by_namespace[namespace].append({
+            "id": item.id,
+            "question": item.question,
+            "missing_detail": item.missing_detail,
+            "upload_guidance": upload_guidance,
+            "rag_score": rag_score,
+            "created_at": item.created_at.isoformat()
+        })
+    
+    if format == "json":
+        return {
+            "week_start": cutoff_date.isoformat(),
+            "total_items": len(items),
+            "by_namespace": by_namespace,
+            "summary": {
+                namespace: len(items_list) 
+                for namespace, items_list in by_namespace.items()
+            }
+        }
+    elif format == "csv":
+        import csv
+        from io import StringIO
+        
+        output = StringIO()
+        writer = csv.DictWriter(output, fieldnames=[
+            "id", "namespace", "question", "missing_detail", 
+            "upload_guidance", "rag_score", "created_at"
+        ])
+        writer.writeheader()
+        
+        for namespace, items_list in by_namespace.items():
+            for item in items_list:
+                writer.writerow({
+                    "id": item["id"],
+                    "namespace": namespace,
+                    "question": item["question"],
+                    "missing_detail": item["missing_detail"],
+                    "upload_guidance": item["upload_guidance"] or "",
+                    "rag_score": item["rag_score"] or "",
+                    "created_at": item["created_at"]
+                })
+        
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=weekly_kb_review.csv"}
+        )
+    else:  # notion
+        # Format for Notion database import
+        notion_items = []
+        for namespace, items_list in by_namespace.items():
+            for item in items_list:
+                notion_items.append({
+                    "Question": item["question"],
+                    "Missing Detail": item["missing_detail"],
+                    "Namespace": namespace,
+                    "Upload Guidance": item["upload_guidance"] or "",
+                    "Priority": "High" if (item["rag_score"] or 1.0) < 0.5 else "Medium",
+                    "Date": item["created_at"][:10],  # Just date
+                    "Status": "Unresolved"
+                })
+        
+        return {"items": notion_items, "format": "notion"}
+
+
+@router.patch("/logs/escalations/{escalation_id}", response_model=EscalationLogSchema)
+async def update_escalation(
+    escalation_id: int,
+    update: EscalationLogUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: dict = Depends(get_current_admin)
+):
+    """Update an escalation log (e.g., mark as converted via webhook)."""
+    result = await db.execute(
+        select(EscalationLog).where(EscalationLog.id == escalation_id)
+    )
+    item = result.scalar_one_or_none()
+    
+    if not item:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Escalation log not found")
+    
+    if update.converted is not None:
+        item.converted = update.converted
+        if update.converted:
+            item.converted_at = datetime.utcnow()
+    
+    if update.conversion_tracked is not None:
+        item.conversion_tracked = update.conversion_tracked
+    
+    await db.commit()
+    await db.refresh(item)
+    
+    return EscalationLogSchema.model_validate(item)
 

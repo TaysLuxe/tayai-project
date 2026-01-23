@@ -10,7 +10,7 @@ Handles:
 """
 import logging
 import json
-from typing import List, Dict, Optional, AsyncGenerator
+from typing import List, Dict, Optional, AsyncGenerator, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, delete
@@ -33,9 +33,20 @@ from app.core.prompts import (
     ConversationContext,
     FALLBACK_RESPONSES
 )
-from app.db.models import ChatMessage, MissingKBItem, QuestionLog
+from app.db.models import ChatMessage, MissingKBItem, QuestionLog, EscalationLog
 from app.services.rag_service import RAGService, ContextResult
 from app.schemas.chat import ChatResponse
+from app.services.helpers import (
+    detect_missing_kb,
+    suggest_namespace,
+    should_escalate_to_paid,
+    determine_escalation_offer,
+    generate_escalation_text,
+    add_escalation_to_response,
+    generate_missing_kb_response,
+    generate_workaround,
+    generate_upload_guidance,
+)
 import re
 from datetime import datetime
 
@@ -99,6 +110,10 @@ class ChatService:
                 else context_result
             )
             
+            # Detect problem category for Session Intent Logic
+            problem_category = detect_problem_category(message)
+            logger.info(f"Problem category: {problem_category.value} for: {message[:50]}...")
+            
             # Build messages and call API
             messages = self._build_messages(
                 message, context, conversation_history, context_type, user_tier
@@ -114,7 +129,43 @@ class ChatService:
             ai_response = response.choices[0].message.content
             tokens_used = response.usage.total_tokens
             
-            # Save to database
+            # Check if question needs escalation to paid offerings FIRST
+            # BUT: Don't escalate for paid users - they already have access
+            # Only escalate for free/trial users
+            escalation_data = None
+            if not user_tier or user_tier.lower() not in ["vip", "elite", "paid", "premium"]:
+                # Free users: Check for escalation
+                escalation_data = should_escalate_to_paid(message, context_type, context_result, None)
+            
+            # Check if response indicates missing knowledge BEFORE sending to user
+            missing_kb_data = detect_missing_kb(message, ai_response, context_result)
+            
+            # Re-check escalation with missing KB context if needed (may strengthen case for escalation)
+            # Only for free users
+            if missing_kb_data and not escalation_data and (not user_tier or user_tier.lower() not in ["vip", "elite", "paid", "premium"]):
+                escalation_data = should_escalate_to_paid(message, context_type, context_result, missing_kb_data)
+            
+            # If missing KB detected, replace response with better one (maintains vibe, provides workaround)
+            if missing_kb_data:
+                logger.info(f"Missing KB detected for user {user_id}, replacing response gracefully")
+                original_response = ai_response  # Keep original for logging
+                ai_response = generate_missing_kb_response(
+                    message, 
+                    missing_kb_data, 
+                    context_type,
+                    context_result,
+                    escalation_data  # Include escalation info if applicable
+                )
+                # Update missing_kb_data with original response for logging
+                missing_kb_data["original_response"] = original_response
+            elif escalation_data:
+                # Even if KB exists, escalate if question needs deep personalized help
+                logger.info(f"Escalation opportunity detected for user {user_id} (offer: {escalation_data.get('offer')})")
+                ai_response = add_escalation_to_response(ai_response, escalation_data, message)
+            else:
+                missing_kb_data = None
+            
+            # Save to database (save the improved response, not the original "I don't know")
             chat_message = ChatMessage(
                 user_id=user_id,
                 message=message,
@@ -127,7 +178,19 @@ class ChatService:
             
             logger.info(f"Processed message for user {user_id}, tokens: {tokens_used}")
             
-            # Log question and check for missing KB items (async logging)
+            # Log escalation if it happened (after chat_message is saved)
+            if escalation_data and escalation_data.get("should_escalate"):
+                await self._log_escalation(
+                    user_id=user_id,
+                    question=message,
+                    escalation_data=escalation_data,
+                    context_type=context_type,
+                    user_tier=user_tier,
+                    chat_message_id=chat_message.id
+                )
+            
+            # Log question and missing KB items (async logging)
+            # Pass missing_kb_data if detected so it can be logged
             await self._log_question_and_missing_kb(
                 user_id=user_id,
                 question=message,
@@ -135,7 +198,8 @@ class ChatService:
                 context_type=context_type,
                 context_result=context_result,
                 user_tier=user_tier,
-                tokens_used=tokens_used
+                tokens_used=tokens_used,
+                missing_kb_data=missing_kb_data  # Pass detected missing KB data
             )
             
             # Build response
@@ -167,10 +231,13 @@ class ChatService:
         user_tier: Optional[str] = None
     ) -> List[Dict]:
         """Build the message array for OpenAI API."""
+        from app.core.prompts.context import is_new_session
+        
         messages = [
             {"role": "system", "content": get_system_prompt(
                 context_type=context_type,
-                user_tier=user_tier
+                user_tier=user_tier,
+                conversation_history=history
             )}
         ]
         
@@ -179,6 +246,15 @@ class ChatService:
             messages.append({
                 "role": "system",
                 "content": get_context_injection_prompt(context, user_message)
+            })
+        
+        # Add onboarding greeting if new session
+        if is_new_session(history):
+            from app.core.prompts.persona import DEFAULT_PERSONA
+            greeting = DEFAULT_PERSONA.onboarding_greeting
+            messages.append({
+                "role": "assistant",
+                "content": greeting
             })
         
         # Add conversation history
@@ -351,19 +427,30 @@ class ChatService:
         try:
             # Detect context type
             context_type = detect_conversation_context(message)
-            logger.info(f"[Stream] Context: {context_type.value} for: {message[:50]}...")
+            
+            # Detect problem category for Session Intent Logic
+            problem_category = detect_problem_category(message)
+            logger.info(f"[Stream] Context: {context_type.value}, Problem category: {problem_category.value} for: {message[:50]}...")
             
             # Send start event
             yield self._format_sse_event("start", {
                 "context_type": context_type.value,
+                "problem_category": problem_category.value,
                 "message": "Processing your message..."
             })
             
-            # Retrieve RAG context
+            # Retrieve RAG context - adjust based on tier
+            if user_tier and user_tier.lower() in ["vip", "elite", "paid", "premium"]:
+                top_k = DEFAULT_TOP_K * 2
+                score_threshold = DEFAULT_SCORE_THRESHOLD * 0.9
+            else:
+                top_k = DEFAULT_TOP_K
+                score_threshold = DEFAULT_SCORE_THRESHOLD
+            
             context_result = await self.rag_service.retrieve_context(
                 query=message,
-                top_k=DEFAULT_TOP_K,
-                score_threshold=DEFAULT_SCORE_THRESHOLD,
+                top_k=top_k,
+                score_threshold=score_threshold,
                 include_sources=True
             )
             
@@ -388,20 +475,40 @@ class ChatService:
                 stream=True
             )
             
-            # Collect full response for saving
+            # Collect full response for saving and checking
             full_response = ""
             
-            # Stream chunks
+            # Stream chunks and collect response
             async for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
                     full_response += content
                     yield self._format_sse_event("chunk", {"content": content})
             
+            # Check if response indicates missing knowledge BEFORE saving
+            missing_kb_data = detect_missing_kb(message, full_response, context_result)
+            
+            # If missing KB detected, replace response (but we've already streamed it)
+            # For streaming, we'll save the graceful replacement and log the issue
+            if missing_kb_data:
+                logger.info(f"[Stream] Missing KB detected for user {user_id}, will save graceful replacement")
+                original_response = full_response
+                full_response = generate_missing_kb_response(
+                    message, 
+                    missing_kb_data, 
+                    context_type,
+                    context_result,
+                    escalation_data  # Include escalation info if applicable
+                )
+                missing_kb_data["original_response"] = original_response
+                # Note: User already saw original, but we save the better version for future reference
+            else:
+                missing_kb_data = None
+            
             # Estimate tokens (actual count not available in streaming)
             estimated_tokens = len(full_response.split()) * 1.3  # Rough estimate
             
-            # Save to database
+            # Save to database (save the improved response if replacement was made)
             chat_message = ChatMessage(
                 user_id=user_id,
                 message=message,
@@ -412,7 +519,7 @@ class ChatService:
             await self.db.commit()
             await self.db.refresh(chat_message)
             
-            # Log question and check for missing KB items (async logging)
+            # Log question and missing KB items (async logging)
             await self._log_question_and_missing_kb(
                 user_id=user_id,
                 question=message,
@@ -420,7 +527,8 @@ class ChatService:
                 context_type=context_type,
                 context_result=context_result,
                 user_tier=user_tier,
-                tokens_used=int(estimated_tokens)
+                tokens_used=int(estimated_tokens),
+                missing_kb_data=missing_kb_data
             )
             
             # Send sources if requested
@@ -477,7 +585,8 @@ class ChatService:
         context_type: ConversationContext,
         context_result: ContextResult,
         user_tier: Optional[str] = None,
-        tokens_used: int = 0
+        tokens_used: int = 0,
+        missing_kb_data: Optional[Dict] = None
     ) -> None:
         """
         Log the question and detect/log missing KB items.
@@ -512,21 +621,31 @@ class ChatService:
             )
             self.db.add(question_log)
             
-            # Check if AI response indicates missing knowledge
-            missing_kb_data = self._detect_missing_kb(question, ai_response, context_result)
+            # Use provided missing_kb_data if available, otherwise detect
+            if not missing_kb_data:
+                missing_kb_data = detect_missing_kb(question, ai_response, context_result)
             
             if missing_kb_data:
+                # Use original response for preview if available (before graceful replacement)
+                response_preview = missing_kb_data.get("original_response", ai_response)[:500]
+                
+                # Generate upload guidance for dashboard
+                namespace = missing_kb_data.get("suggested_namespace", "faqs")
+                upload_guidance = generate_upload_guidance(question, namespace, missing_kb_data)
+                
                 missing_kb_item = MissingKBItem(
                     user_id=user_id,
                     question=question,
                     missing_detail=missing_kb_data["missing_detail"],
-                    ai_response_preview=ai_response[:500],  # First 500 chars
-                    suggested_namespace=missing_kb_data.get("suggested_namespace"),
+                    ai_response_preview=response_preview,  # Original "I don't know" response
+                    suggested_namespace=namespace,
                     extra_metadata={
                         "context_type": context_type.value,
                         "user_tier": user_tier,
                         "rag_score": missing_kb_data.get("rag_score"),
-                        "has_sources": has_sources
+                        "has_sources": has_sources,
+                        "replaced_with_graceful_response": True,  # Flag that we replaced it
+                        "upload_guidance": upload_guidance  # What to upload to resolve this
                     }
                 )
                 self.db.add(missing_kb_item)
@@ -539,94 +658,51 @@ class ChatService:
             # Don't fail the request if logging fails
             logger.error(f"Error logging question/missing KB: {e}")
     
-    @staticmethod
-    def _detect_missing_kb(question: str, ai_response: str, context_result: ContextResult) -> Optional[Dict]:
+    async def _log_escalation(
+        self,
+        user_id: int,
+        question: str,
+        escalation_data: Dict,
+        context_type: ConversationContext,
+        user_tier: Optional[str] = None,
+        chat_message_id: Optional[int] = None
+    ) -> None:
         """
-        Detect if the AI response indicates missing knowledge.
+        Log escalation to paid offerings for tracking and conversion analysis.
         
-        Looks for phrases like:
-        - "isn't in my brain yet"
-        - "don't have that info"
-        - "not in my brain"
-        - "I don't have"
-        - Low RAG scores
-        
-        Returns dict with missing_detail and suggested_namespace if detected, None otherwise.
+        Creates the escalation feedback loop:
+        User Question → Escalation → Logged → Track Conversion → Optimize
         """
-        # Check for missing KB indicators in response
-        missing_indicators = [
-            r"isn't in my brain",
-            r"not in my brain",
-            r"don't have that",
-            r"don't have this",
-            r"don't have the",
-            r"can't find",
-            r"don't have access to",
-            r"isn't available",
-            r"not available in",
-        ]
-        
-        response_lower = ai_response.lower()
-        has_missing_indicator = any(re.search(pattern, response_lower) for pattern in missing_indicators)
-        
-        # Check RAG context quality
-        has_good_sources = isinstance(context_result, ContextResult) and (
-            len(context_result.sources) == 0 or
-            any(s.score < 0.7 for s in context_result.sources)  # Low confidence scores
-        )
-        
-        if has_missing_indicator or has_good_sources:
-            # Extract missing detail from question and response
-            missing_detail = question  # Start with the question
-            
-            # Try to extract more specific detail from response
-            # Look for phrases after "isn't in my brain" or similar
-            detail_patterns = [
-                r"isn't in my brain[^.]*\.\s*([^.]*)",
-                r"don't have that[^.]*\.\s*([^.]*)",
-                r"don't have the ([^.]*)",
-            ]
-            
-            for pattern in detail_patterns:
-                match = re.search(pattern, response_lower)
-                if match:
-                    missing_detail = f"{question} - Specifically: {match.group(1)}"
-                    break
-            
-            # Suggest namespace based on question content
-            suggested_namespace = ChatService._suggest_namespace(question)
-            
-            return {
-                "missing_detail": missing_detail.strip(),
-                "suggested_namespace": suggested_namespace,
-                "rag_score": (
-                    min(s.score for s in context_result.sources) if 
-                    isinstance(context_result, ContextResult) and context_result.sources else None
-                )
-            }
-        
-        return None
+        try:
+            escalation_log = EscalationLog(
+                user_id=user_id,
+                question=question,
+                offer=escalation_data.get("offer", "mentorship"),
+                escalation_reason=escalation_data.get("reason", "personalized_help"),
+                context_type=context_type.value,
+                user_tier=user_tier,
+                chat_message_id=chat_message_id,
+                extra_metadata={
+                    "personal_score": escalation_data.get("personal_score", 0),
+                    "strategic_score": escalation_data.get("strategic_score", 0),
+                    "advanced_score": escalation_data.get("advanced_score", 0),
+                    "total_score": escalation_data.get("total_score", 0),
+                    "template_index": escalation_data.get("template_index", 0)
+                }
+            )
+            self.db.add(escalation_log)
+            await self.db.commit()
+            logger.info(f"Escalation logged: user {user_id}, offer: {escalation_data.get('offer')}, reason: {escalation_data.get('reason')}")
+        except Exception as e:
+            # Don't fail the request if logging fails
+            logger.error(f"Error logging escalation: {e}")
     
-    @staticmethod
-    def _suggest_namespace(question: str) -> Optional[str]:
-        """Suggest a KB namespace based on question content."""
-        question_lower = question.lower()
-        
-        # Namespace keywords mapping
-        namespace_keywords = {
-            "techniques": ["install", "lace", "melting", "plucking", "tinting", "bleaching", "wig construction", "bald cap"],
-            "vendor": ["vendor", "supplier", "hair", "quality", "sample", "moq", "shipping", "pricing", "bundle"],
-            "business": ["price", "pricing", "profit", "margin", "shopify", "brand", "niche", "packaging", "refund"],
-            "content": ["hook", "reel", "script", "story", "content", "caption", "post", "social media"],
-            "mindset": ["confidence", "imposter", "perfection", "block", "motivation", "fear", "consistency"],
-            "offers": ["tutorial", "mentorship", "course", "community", "masterclass", "trip", "offer"]
-        }
-        
-        for namespace, keywords in namespace_keywords.items():
-            if any(keyword in question_lower for keyword in keywords):
-                return namespace
-        
-        return "faqs"  # Default to FAQs
+    # Note: Helper methods have been extracted to app.services.helpers module
+    # for better organization and reusability. See:
+    # - missing_kb_detector.py
+    # - escalation_handler.py
+    # - response_generator.py
+    # - namespace_mapper.py
     
     @staticmethod
     def _normalize_question(question: str) -> str:

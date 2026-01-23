@@ -138,3 +138,24 @@ class QuestionLog(Base):
     
     # Additional metadata (JSON)
     extra_metadata = Column(JSON, nullable=True)  # Store RAG scores, sources count, etc. (renamed from 'metadata' - reserved)
+
+
+class EscalationLog(Base):
+    """Track escalations to paid offerings for conversion tracking and optimization"""
+    __tablename__ = "escalation_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    question = Column(Text, nullable=False)  # Original user question
+    offer = Column(String, nullable=False, index=True)  # Offer mentioned (mentorship, course, etc.)
+    escalation_reason = Column(String, nullable=True)  # Why escalated (personalized_help, strategic, etc.)
+    context_type = Column(String, nullable=True)  # Conversation context
+    user_tier = Column(String, nullable=True, index=True)  # User's tier at time of escalation
+    chat_message_id = Column(Integer, nullable=True, index=True)  # Link to chat message
+    conversion_tracked = Column(Boolean, default=False, index=True)  # Whether conversion was tracked
+    converted = Column(Boolean, nullable=True, index=True)  # Whether user converted (updated via webhook)
+    converted_at = Column(DateTime(timezone=True), nullable=True)  # When conversion happened
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    # Additional metadata (JSON)
+    extra_metadata = Column(JSON, nullable=True)  # Store detection scores, template used, etc.

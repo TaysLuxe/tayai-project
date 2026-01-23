@@ -56,16 +56,35 @@ class KnowledgeService:
         
         # Index in PostgreSQL pgvector
         content_id = f"kb_{db_item.id}"
+        
+        # Store namespace in metadata for easy retrieval
+        metadata_dict = {
+            "title": item.title,
+            "category": item.category or "",
+            "id": db_item.id,
+            "source": "knowledge_base"
+        }
+        if item.namespace:
+            metadata_dict["namespace"] = item.namespace
+        
+        # Also store namespace in extra_metadata for KB record
+        kb_metadata = {}
+        if item.metadata:
+            try:
+                kb_metadata = json.loads(item.metadata) if isinstance(item.metadata, str) else item.metadata
+            except:
+                kb_metadata = {}
+        if item.namespace:
+            kb_metadata["namespace"] = item.namespace
+        if kb_metadata:
+            db_item.extra_metadata = json.dumps(kb_metadata)
+        
         success, chunk_ids = await self.rag_service.index_content(
             content=item.content,
-            metadata={
-                "title": item.title,
-                "category": item.category or "",
-                "id": db_item.id,
-                "source": "knowledge_base"
-            },
+            metadata=metadata_dict,
             content_id=content_id,
             chunk_content=True,
+            namespace=item.namespace,  # Use namespace for organized retrieval
             knowledge_base_id=db_item.id
         )
         
@@ -127,6 +146,8 @@ class KnowledgeService:
         # Re-index if content changed
         content_id = db_item.vector_id or f"kb_{db_item.id}"
         if content_changed:
+            # Extract namespace from metadata if stored there, or use update.namespace
+            namespace = update.namespace if update.namespace else None
             await self.rag_service.update_content(
                 content=db_item.content,
                 metadata={
@@ -136,6 +157,7 @@ class KnowledgeService:
                     "source": "knowledge_base"
                 },
                 content_id=content_id,
+                namespace=namespace,
                 knowledge_base_id=db_item.id
             )
             db_item.vector_id = content_id
@@ -229,6 +251,10 @@ class KnowledgeService:
         for item in items:
             try:
                 content_id = f"kb_{item.id}"
+                # Try to extract namespace from metadata if available
+                metadata_dict = json.loads(item.extra_metadata) if item.extra_metadata else {}
+                namespace = metadata_dict.get("namespace") if isinstance(metadata_dict, dict) else None
+                
                 success, _ = await self.rag_service.index_content(
                     content=item.content,
                     metadata={
@@ -239,6 +265,7 @@ class KnowledgeService:
                     },
                     content_id=content_id,
                     chunk_content=True,
+                    namespace=namespace,
                     knowledge_base_id=item.id
                 )
                 
