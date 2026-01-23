@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import ChatWidget from '@/components/ChatWidget';
 import { LoginForm, LoadingSpinner } from '@/components/ui';
 import { useState } from 'react';
-import { authApi } from '@/lib/api';
 
 export default function Home() {
   const { isAuthenticated, login, logout, user, loading } = useAuth();
@@ -21,8 +20,8 @@ export default function Home() {
     
     try {
       await login(username, password);
-    } catch (error: any) {
-      setLoginError(error.response?.data?.detail || 'Login failed');
+    } catch (error: unknown) {
+      setLoginError(error instanceof Error ? error.message : 'Login failed');
     } finally {
       setIsLoggingIn(false);
     }

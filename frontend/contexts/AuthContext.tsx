@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi } from '@/lib/api';
+import { authApi } from '@/utils/api';
 import { tokenStorage } from '@/utils/storage';
 import type { User } from '@/types';
 

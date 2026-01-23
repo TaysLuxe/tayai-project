@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { chatApi } from '@/lib/api';
+import { chatApi } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { MessageList, ChatInput, ErrorAlert } from './ui';
 import type { Message } from '@/types';
@@ -43,8 +43,8 @@ export default function ChatWidget() {
       };
       
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to send message');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send message');
       console.error('Chat error:', err);
     } finally {
       setLoading(false);
