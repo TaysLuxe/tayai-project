@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('access_token');
       if (token) {
         try {
-          const userData = await authAPI.verify();
+          const userData = await authApi.verify();
           if (userData.valid) {
             setUser({
               user_id: userData.user_id,
@@ -55,11 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string) => {
-    const response = await authAPI.login(username, password);
+    const response = await authApi.login(username, password);
     localStorage.setItem('access_token', response.access_token);
     localStorage.setItem('refresh_token', response.refresh_token);
     
-    const userData = await authAPI.verify();
+    const userData = await authApi.verify();
     setUser({
       user_id: userData.user_id,
       username: userData.username,
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const userData = await authAPI.verify();
+      const userData = await authApi.verify();
       if (userData.valid) {
         setUser({
           user_id: userData.user_id,

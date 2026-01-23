@@ -42,7 +42,7 @@ export default function ChatWidget() {
         content: msg.content,
       }));
 
-      const response = await chatAPI.sendMessage(input, conversationHistory);
+      const response = await chatApi.sendMessage(input, conversationHistory);
       
       const assistantMessage: Message = {
         role: 'assistant',

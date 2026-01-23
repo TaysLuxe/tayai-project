@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import ChatWidget from '@/components/ChatWidget';
 import { useState } from 'react';
-import { authApi } from '@/lib/api';
+// authApi is used via useAuth hook, no direct import needed
 
 export default function Home() {
   const { isAuthenticated, login, logout, user, loading } = useAuth();
