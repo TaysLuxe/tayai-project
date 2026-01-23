@@ -338,3 +338,15 @@ config.local.py
 # Cursor-specific (keep .cursorignore but ignore indexing files)
 .cursorindexingignore
 .cursor-git-refresh
+
+# Media Files (large video/audio - keep transcripts only)
+*.mp4
+*.m4a
+*.mov
+*.avi
+*.mkv
+*.webm
+*.mp3
+*.wav
+*.flac
+*.aac
