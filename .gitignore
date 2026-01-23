@@ -14,8 +14,12 @@ dist/
 downloads/
 eggs/
 .eggs/
+# Exception: Allow frontend/lib/api (our API module)
+!frontend/lib/api/
 lib/
 lib64/
+# Exception: Allow frontend/lib/api (our API module)
+!frontend/lib/api/
 parts/
 sdist/
 var/
