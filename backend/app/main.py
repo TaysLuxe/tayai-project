@@ -41,8 +41,19 @@ async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
     logger.info("Starting TayAI API...")
-    await init_db()
-    logger.info("Database initialized")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"Debug mode: {settings.DEBUG}")
+    logger.info(f"API prefix: {settings.API_V1_PREFIX}")
+    logger.info(f"CORS origins: {settings.BACKEND_CORS_ORIGINS}")
+    logger.info(f"Allowed hosts: {settings.ALLOWED_HOSTS}")
+    
+    try:
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        raise
+    
     yield
     # Shutdown
     logger.info("Shutting down TayAI API...")
@@ -124,6 +135,8 @@ async def general_exception_handler(request: Request, exc: Exception):
 # =============================================================================
 
 # CORS Middleware (must be first for preflight requests)
+# Log CORS origins for debugging
+logger.info(f"CORS allowed origins: {settings.BACKEND_CORS_ORIGINS}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,

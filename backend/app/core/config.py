@@ -8,8 +8,13 @@ Loads environment variables from .env file and provides
 typed configuration settings for the application.
 """
 from pydantic_settings import BaseSettings
-from typing import List
+from pydantic import field_validator
+from typing import List, Union
 import os
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -21,11 +26,47 @@ class Settings(BaseSettings):
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
     API_V1_PREFIX: str = os.getenv("API_V1_PREFIX", "/api/v1")
     
-    # CORS
+    # CORS - Parse from environment variable
+    # Supports JSON array string: ["https://example.com"]
+    # Or comma-separated string: https://example.com,https://other.com
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
     ]
+    
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        """Parse CORS origins from environment variable."""
+        if isinstance(v, list):
+            return v
+        
+        if isinstance(v, str):
+            # Try to parse as JSON first
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    logger.info(f"Parsed CORS origins from JSON: {parsed}")
+                    return parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
+            
+            # If not JSON, try comma-separated
+            if "," in v:
+                origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+                logger.info(f"Parsed CORS origins from comma-separated: {origins}")
+                return origins
+            
+            # Single value
+            if v.strip():
+                logger.info(f"Parsed single CORS origin: {v}")
+                return [v.strip()]
+        
+        # Default fallback
+        default = ["http://localhost:3000", "http://localhost:3001"]
+        logger.warning(f"Could not parse CORS origins, using default: {default}")
+        return default
+    
     ALLOWED_HOSTS: List[str] = ["*"]
     
     # Database
