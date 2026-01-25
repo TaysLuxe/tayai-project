@@ -4,6 +4,9 @@ const path = require('path');
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  images: {
+    unoptimized: true, // Disable image optimization for Railway deployment
+  },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000',

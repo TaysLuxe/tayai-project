@@ -68,7 +68,7 @@ export default function RegisterPage() {
       <div className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           {/* Logo */}
-          <div className="flex justify-center">
+          <div className="flex justify-center mb-4">
             <Image
               src="/logo.png"
               alt="Tays Luxe Academy"
@@ -76,6 +76,7 @@ export default function RegisterPage() {
               height={80}
               className="h-auto w-auto"
               priority
+              unoptimized
             />
           </div>
 
