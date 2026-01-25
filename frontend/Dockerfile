@@ -40,10 +40,15 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy built application from standalone output
+# Note: Next.js standalone with App Router may not include app directory properly
+# Copy standalone output first
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy public directory (Next.js standalone doesn't include it automatically)
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# Ensure app directory is available for App Router (standalone may exclude it)
+# The app directory is compiled into .next/server, but we need to ensure it's there
+COPY --from=builder --chown=nextjs:nodejs /app/app ./app
 
 USER nextjs
 
@@ -51,4 +56,5 @@ USER nextjs
 EXPOSE 3000
 
 # Start the Next.js server
+# In standalone mode, server.js should be in the root
 CMD ["node", "server.js"]
