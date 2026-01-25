@@ -3,8 +3,7 @@ const path = require('path');
 
 const nextConfig = {
   reactStrictMode: true,
-  // Remove standalone output for Railway - use standard build instead
-  // output: 'standalone',
+  output: 'standalone',
   images: {
     unoptimized: true, // Disable image optimization for Railway deployment
   },
