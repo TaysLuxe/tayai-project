@@ -16,48 +16,39 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8000'),
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || (process.env.NODE_ENV === 'production' ? '' : 'ws://localhost:8000'),
   },
-  // Rewrites to proxy API requests to backend
-  // This allows /api/v1/* requests to be forwarded to the backend service
-  // Priority: BACKEND_API_URL > NEXT_PUBLIC_API_URL > hardcoded fallback
+  // Rewrites to proxy API requests to backend (fallback only)
+  // Note: Direct API calls via NEXT_PUBLIC_API_URL are preferred over rewrites
+  // Rewrites are only used if NEXT_PUBLIC_API_URL is not set
   async rewrites() {
-    // Option 1: Use BACKEND_API_URL if set (server-side only, for proxying)
-    if (process.env.BACKEND_API_URL) {
-      const backendUrl = process.env.BACKEND_API_URL.replace(/\/api\/v1\/?$/, '').trim();
-      if (backendUrl) {
+    // Only use rewrites if NEXT_PUBLIC_API_URL is NOT set
+    // This is a fallback - direct API calls are preferred
+    if (!process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL.trim() === '') {
+      // Option 1: Use BACKEND_API_URL if set (server-side only, for proxying)
+      if (process.env.BACKEND_API_URL) {
+        const backendUrl = process.env.BACKEND_API_URL.replace(/\/api\/v1\/?$/, '').trim();
+        if (backendUrl) {
+          return [
+            {
+              source: '/api/v1/:path*',
+              destination: `${backendUrl}/api/v1/:path*`,
+            },
+          ];
+        }
+      }
+      
+      // Option 2: Hardcoded fallback for production domain (only if no env vars set)
+      // If on ai.taysluxeacademy.com and no env vars, proxy to api.taysluxeacademy.com
+      if (process.env.NODE_ENV === 'production') {
         return [
           {
             source: '/api/v1/:path*',
-            destination: `${backendUrl}/api/v1/:path*`,
+            destination: 'https://api.taysluxeacademy.com/api/v1/:path*',
           },
         ];
       }
     }
     
-    // Option 2: Use NEXT_PUBLIC_API_URL if set and points to different domain
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, '').trim();
-      if (apiUrl && apiUrl !== 'http://localhost:8000' && !apiUrl.includes('localhost')) {
-        // Only proxy if it's a different domain
-        return [
-          {
-            source: '/api/v1/:path*',
-            destination: `${apiUrl}/api/v1/:path*`,
-          },
-        ];
-      }
-    }
-    
-    // Option 3: Hardcoded fallback for production domain
-    // If on ai.taysluxeacademy.com, proxy to api.taysluxeacademy.com
-    if (process.env.NODE_ENV === 'production') {
-      return [
-        {
-          source: '/api/v1/:path*',
-          destination: 'https://api.taysluxeacademy.com/api/v1/:path*',
-        },
-      ];
-    }
-    
+    // If NEXT_PUBLIC_API_URL is set, don't use rewrites - use direct API calls
     return [];
   },
   webpack: (config, { isServer }) => {
