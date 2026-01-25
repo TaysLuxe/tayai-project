@@ -4,14 +4,9 @@ Database models
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Enum as SQLEnum, JSON
 from sqlalchemy.sql import func
 from datetime import datetime
-import enum
+
 from app.db.database import Base
-
-
-class UserTier(str, enum.Enum):
-    """User membership tier"""
-    BASIC = "basic"  # New member - 7-day trial access
-    VIP = "vip"      # Elite - Full access to Community + Mentorship + Tay AI
+from app.core.constants import UserTier
 
 
 class User(Base):
@@ -95,7 +90,7 @@ class VectorEmbedding(Base):
     # Note: embedding column is defined as vector(1536) in database, but SQLAlchemy doesn't have native support
     # We'll handle it via raw SQL queries
     content = Column(Text, nullable=False)
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)  # Renamed from 'metadata' - reserved in SQLAlchemy
     namespace = Column(String, nullable=True, index=True)
     chunk_index = Column(Integer, nullable=True)
     parent_id = Column(String, nullable=True, index=True)

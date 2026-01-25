@@ -16,7 +16,8 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 from app.db.database import get_db
-from app.db.models import User, ChatMessage, UsageTracking, UserTier, MissingKBItem, QuestionLog
+from app.db.models import User, ChatMessage, UsageTracking, MissingKBItem, QuestionLog
+from app.core.constants import UserTier
 from app.schemas.knowledge import (
     KnowledgeBaseItem,
     KnowledgeBaseCreate,
@@ -728,7 +729,7 @@ async def get_missing_kb_stats(
 @router.get("/logs/missing-kb/export", response_model=List[MissingKBExport])
 async def export_missing_kb_items(
     unresolved_only: bool = Query(True),
-    export_format: str = Query("json", regex="^(json|csv)$", alias="format"),
+    export_format: str = Query("json", pattern="^(json|csv)$", alias="format"),
     db: AsyncSession = Depends(get_db),
     admin: dict = Depends(get_current_admin)
 ):
@@ -900,7 +901,7 @@ async def get_question_stats(
 @router.get("/logs/questions/export", response_model=List[QuestionExport])
 async def export_question_logs(
     period_days: int = Query(30, ge=1, le=365),
-    export_format: str = Query("json", regex="^(json|csv)$", alias="format"),
+    export_format: str = Query("json", pattern="^(json|csv)$", alias="format"),
     db: AsyncSession = Depends(get_db),
     admin: dict = Depends(get_current_admin)
 ):

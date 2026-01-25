@@ -17,7 +17,7 @@ from typing import Set, Optional, List
 from functools import wraps
 from fastapi import HTTPException, status, Depends
 
-from app.db.models import UserTier
+from app.core.constants import UserTier
 
 
 # =============================================================================

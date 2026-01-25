@@ -72,6 +72,8 @@ from app.core.exceptions import (
     to_http_exception,
 )
 from app.core.constants import (
+    # User Tiers
+    UserTier,
     # Chat Configuration
     MAX_MESSAGE_LENGTH,
     MIN_MESSAGE_LENGTH,
@@ -165,6 +167,7 @@ __all__ = [
     "RedisError",
     "to_http_exception",
     # Constants
+    "UserTier",
     "MAX_MESSAGE_LENGTH",
     "MIN_MESSAGE_LENGTH",
     "MAX_CONVERSATION_HISTORY",

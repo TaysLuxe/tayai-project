@@ -31,8 +31,8 @@ from app.utils import (
     sanitize_user_input,
     validate_message_content,
     convert_conversation_history,
-    check_usage_limit_dependency,
 )
+from app.utils.usage import check_usage_limit_dependency
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

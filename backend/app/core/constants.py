@@ -5,6 +5,17 @@ Centralized constants used throughout the application.
 Follows DRY principle and makes configuration easier to maintain.
 """
 from typing import Dict, List
+import enum
+
+
+# =============================================================================
+# User Tiers
+# =============================================================================
+
+class UserTier(str, enum.Enum):
+    """User membership tier"""
+    BASIC = "basic"  # New member - 7-day trial access
+    VIP = "vip"      # Elite - Full access to Community + Mentorship + Tay AI
 
 # =============================================================================
 # Chat Configuration

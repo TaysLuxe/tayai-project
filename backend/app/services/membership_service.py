@@ -14,7 +14,7 @@ from typing import Optional, Dict, Any
 from enum import Enum
 
 from app.core.config import settings
-from app.db.models import UserTier
+from app.core.constants import UserTier
 
 logger = logging.getLogger(__name__)
 

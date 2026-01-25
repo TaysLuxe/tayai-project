@@ -11,7 +11,6 @@ from app.db.database import (
 )
 from app.db.models import (
     User,
-    UserTier,
     ChatMessage,
     UsageTracking,
     KnowledgeBase,
@@ -19,6 +18,7 @@ from app.db.models import (
     MissingKBItem,
     QuestionLog,
 )
+from app.core.constants import UserTier
 
 __all__ = [
     # Database connection

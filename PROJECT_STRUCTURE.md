@@ -88,30 +88,23 @@ app/
     └── usage.py              # Usage limit checking dependency
 ```
 
-### `scripts/` - Utility Scripts
-
-```
-scripts/
-├── __init__.py
-├── import_content.py        # Import custom content from content/
-├── init_pinecone.py         # Pinecone index management
-└── seed_knowledge_base.py   # Initial knowledge base seeding
-```
-
 ### `tests/` - Automated Tests
 
 ```
 tests/
 ├── __init__.py
 ├── conftest.py              # Shared fixtures and mocks
+├── README.md                # Test documentation
 ├── unit/                    # Unit tests (isolated)
-│   ├── test_prompts.py      # Prompt engineering tests
-│   ├── test_context.py      # Context detection tests
-│   ├── test_utils.py        # Utility function tests
-│   ├── test_schemas.py      # Schema validation tests
-│   └── test_rag_service.py  # RAG service tests
+│   ├── __init__.py
+│   ├── test_security.py     # Password hashing, JWT tokens
+│   ├── test_tokens.py       # Token creation utilities
+│   ├── test_text.py         # Text sanitization and validation
+│   └── test_cost_calculator.py  # API cost calculations
 └── integration/             # Integration tests
-    └── test_api.py          # API endpoint tests
+    ├── __init__.py
+    ├── test_auth_endpoints.py  # Authentication endpoints
+    └── test_chat_endpoints.py  # Chat endpoints
 ```
 
 ## Frontend Structure (`frontend/`)
@@ -120,8 +113,12 @@ tests/
 frontend/
 ├── app/                 # Next.js App Directory
 │   ├── layout.tsx       # Root layout
-│   ├── page.tsx         # Home page
-│   └── globals.css      # Global styles
+│   ├── page.tsx         # Dashboard/home page
+│   ├── globals.css      # Global styles
+│   ├── login/           # Login page
+│   │   └── page.tsx
+│   └── register/        # Registration page
+│       └── page.tsx
 │
 ├── components/          # React Components
 │   ├── __init__.ts
@@ -131,24 +128,14 @@ frontend/
 │   ├── __init__.ts
 │   └── AuthContext.tsx  # Authentication state
 │
-└── lib/                 # Utilities
-    └── api.ts           # API client
+├── lib/                 # Utilities
+│   └── api.ts           # API client (axios-based)
+│
+└── public/              # Static assets
+    ├── .gitkeep
+    └── logo.png         # Tays Luxe Academy logo
 ```
 
-## Content Directory (`content/`)
-
-Custom knowledge base content for TayAI:
-
-```
-content/
-├── README.md            # Content authoring guide
-├── faqs.yaml            # Frequently asked questions
-├── frameworks.yaml      # Business frameworks
-├── quick_tips.yaml      # Quick tips
-└── courses/             # Course transcripts
-    ├── README.md        # Course format guide
-    └── _example-course.md  # Example template
-```
 
 ## Configuration Files
 
@@ -222,7 +209,7 @@ cd backend
 python3 -m pytest tests/ -v
 
 # Run specific test file
-python3 -m pytest tests/unit/test_prompts.py -v
+python3 -m pytest tests/unit/test_security.py -v
 
 # Run with coverage
 python3 -m pytest tests/ --cov=app --cov-report=term-missing

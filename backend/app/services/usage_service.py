@@ -4,7 +4,8 @@ Usage service - Business logic for usage tracking and rate limiting
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timedelta
-from app.db.models import UsageTracking, UserTier, User
+from app.db.models import UsageTracking, User
+from app.core.constants import UserTier
 from app.core.config import settings
 from app.core.exceptions import UsageLimitExceededError
 from app.schemas.usage import UsageStatus

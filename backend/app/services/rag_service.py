@@ -116,7 +116,7 @@ class RAGService:
                 SELECT 
                     id,
                     content,
-                    metadata,
+                    meta_data,
                     1 - (embedding <=> :query_vector::vector) as similarity
                 FROM vector_embeddings
                 WHERE 1 - (embedding <=> :query_vector::vector) >= :threshold
@@ -137,11 +137,11 @@ class RAGService:
                 for key, value in filter_metadata.items():
                     # Use JSONB operators for metadata filtering
                     if isinstance(value, (dict, list)):
-                        query_sql += f" AND metadata->>:key_{key} = :value_{key}::jsonb"
+                        query_sql += f" AND meta_data->>:key_{key} = :value_{key}::jsonb"
                         params[f"key_{key}"] = key
                         params[f"value_{key}"] = json.dumps(value)
                     else:
-                        query_sql += f" AND metadata->>:key_{key} = :value_{key}"
+                        query_sql += f" AND meta_data->>:key_{key} = :value_{key}"
                         params[f"key_{key}"] = key
                         params[f"value_{key}"] = str(value)
             
@@ -154,7 +154,7 @@ class RAGService:
             # Convert to RetrievalResult objects
             matches = []
             for row in rows:
-                metadata = row.metadata if isinstance(row.metadata, dict) else json.loads(row.metadata) if row.metadata else {}
+                metadata = row.meta_data if isinstance(row.meta_data, dict) else json.loads(row.meta_data) if row.meta_data else {}
                 matches.append(
                     RetrievalResult(
                         content=row.content,
@@ -175,8 +175,8 @@ class RAGService:
             
             sources = [
                 {
-                    "title": m.metadata.get("title", "Unknown"),
-                    "category": m.metadata.get("category", ""),
+                    "title": m.meta_data.get("title", "Unknown") if m.meta_data else "Unknown",
+                    "category": m.meta_data.get("category", "") if m.meta_data else "",
                     "score": round(m.score, 3),
                     "chunk_id": m.chunk_id
                 }
@@ -193,8 +193,8 @@ class RAGService:
     
     def _format_context(self, result: RetrievalResult) -> str:
         """Format a single context piece."""
-        title = result.metadata.get("title", "")
-        category = result.metadata.get("category", "")
+        title = result.meta_data.get("title", "") if result.meta_data else ""
+        category = result.meta_data.get("category", "") if result.meta_data else ""
         
         header = ""
         if title:
@@ -305,13 +305,13 @@ class RAGService:
             # Insert or update vector embedding
             insert_sql = """
                 INSERT INTO vector_embeddings 
-                    (id, knowledge_base_id, embedding, content, metadata, namespace, chunk_index, parent_id)
+                    (id, knowledge_base_id, embedding, content, meta_data, namespace, chunk_index, parent_id)
                 VALUES 
-                    (:id, :kb_id, :embedding::vector, :content, :metadata::jsonb, :namespace, :chunk_index, :parent_id)
+                    (:id, :kb_id, :embedding::vector, :content, :meta_data::jsonb, :namespace, :chunk_index, :parent_id)
                 ON CONFLICT (id) DO UPDATE SET
                     embedding = EXCLUDED.embedding,
                     content = EXCLUDED.content,
-                    metadata = EXCLUDED.metadata,
+                    meta_data = EXCLUDED.meta_data,
                     namespace = EXCLUDED.namespace,
                     chunk_index = EXCLUDED.chunk_index,
                     parent_id = EXCLUDED.parent_id
@@ -355,13 +355,13 @@ class RAGService:
         # Insert or update vector embedding
         insert_sql = """
             INSERT INTO vector_embeddings 
-                (id, knowledge_base_id, embedding, content, metadata, namespace, parent_id)
+                (id, knowledge_base_id, embedding, content, meta_data, namespace, parent_id)
             VALUES 
-                (:id, :kb_id, :embedding::vector, :content, :metadata::jsonb, :namespace, :parent_id)
+                (:id, :kb_id, :embedding::vector, :content, :meta_data::jsonb, :namespace, :parent_id)
             ON CONFLICT (id) DO UPDATE SET
                 embedding = EXCLUDED.embedding,
                 content = EXCLUDED.content,
-                metadata = EXCLUDED.metadata,
+                    meta_data = EXCLUDED.meta_data,
                 namespace = EXCLUDED.namespace,
                 parent_id = EXCLUDED.parent_id
         """
@@ -468,7 +468,7 @@ class RAGService:
         
         if filter_metadata:
             for key, value in filter_metadata.items():
-                query_sql += f" AND metadata->>:key_{key} = :value_{key}"
+                query_sql += f" AND meta_data->>:key_{key} = :value_{key}"
                 params[f"key_{key}"] = key
                 params[f"value_{key}"] = json.dumps(value) if isinstance(value, (dict, list)) else str(value)
         
@@ -482,7 +482,7 @@ class RAGService:
             {
                 "id": row.id,
                 "score": float(row.similarity),
-                "metadata": row.metadata if isinstance(row.metadata, dict) else json.loads(row.metadata) if row.metadata else {}
+                "metadata": row.meta_data if isinstance(row.meta_data, dict) else json.loads(row.meta_data) if row.meta_data else {}
             }
             for row in rows
         ]

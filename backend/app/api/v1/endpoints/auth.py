@@ -400,4 +400,4 @@ async def sso_login(
         )
     
     # Return local JWT tokens
-    return _create_tokens(user)
+    return create_user_tokens(user)

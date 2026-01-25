@@ -19,7 +19,8 @@ from .text import (
 )
 from .conversation import convert_conversation_history
 from .tokens import create_user_tokens
-from .usage import check_usage_limit_dependency
+# Import usage dependency lazily to avoid circular import
+# from .usage import check_usage_limit_dependency
 from .cost_calculator import (
     estimate_cost_from_total_tokens,
     estimate_cost_from_tokens,
@@ -34,8 +35,8 @@ __all__ = [
     "convert_conversation_history",
     # Token utilities
     "create_user_tokens",
-    # Usage utilities
-    "check_usage_limit_dependency",
+    # Usage utilities - import directly from app.utils.usage to avoid circular import
+    # "check_usage_limit_dependency",
     # Cost calculation
     "estimate_cost_from_total_tokens",
     "estimate_cost_from_tokens",

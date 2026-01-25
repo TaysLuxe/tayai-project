@@ -20,7 +20,7 @@ from app.services.membership_service import (
 from app.services.user_service import UserService
 from app.dependencies import get_current_admin, get_current_user
 from app.core.security import get_password_hash
-from app.db.models import UserTier
+from app.core.constants import UserTier
 import secrets
 import logging
 

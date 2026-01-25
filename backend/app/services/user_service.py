@@ -11,7 +11,8 @@ from typing import Optional, List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.db.models import User, UserTier
+from app.db.models import User
+from app.core.constants import UserTier
 from app.core.security import get_password_hash
 from app.core.config import settings
 from app.core.constants import (
