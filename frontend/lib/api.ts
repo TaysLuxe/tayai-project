@@ -3,17 +3,36 @@ import axios from 'axios';
 // Get API URL from environment variable or detect from current domain
 // This function is called at runtime to ensure proper detection
 const getApiBaseUrl = (): string => {
-  // Priority 1: Runtime detection for production (client-side only)
+  // Priority 1: Use environment variable if set (available at build time)
+  // This is the most reliable method for production
+  // Railway should set NEXT_PUBLIC_API_URL to the backend service URL
+  const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envApiUrl && envApiUrl.trim() !== '' && envApiUrl !== 'http://localhost:8000') {
+    // Remove /api/v1 if present since we add it in baseURL
+    const cleaned = envApiUrl.replace(/\/api\/v1\/?$/, '').trim();
+    if (cleaned !== '' && cleaned !== 'http://localhost:8000') {
+      return cleaned;
+    }
+  }
+  
+  // Priority 2: Runtime detection for production (client-side only)
+  // Only use this if environment variable is not set
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
     
-    // Production domain - backend is on same domain (if proxied/reverse proxy)
-    // For ai.taysluxeacademy.com, backend should be on same domain
+    // Production domain - try same domain first (if backend is proxied)
+    // Note: This assumes backend is on same domain or proxied
+    // If backend is on separate Railway URL, NEXT_PUBLIC_API_URL must be set
     if (hostname === 'ai.taysluxeacademy.com' || hostname === 'taysluxeacademy.com') {
-      // Backend is on the same domain, use same origin
-      // This assumes the backend is proxied through the same domain
-      return `${protocol}//${hostname}`;
+      // Try same domain first (if backend is proxied through Railway)
+      // If this doesn't work, NEXT_PUBLIC_API_URL must be set to backend Railway URL
+      const sameOrigin = `${protocol}//${hostname}`;
+      console.warn(
+        'NEXT_PUBLIC_API_URL not set. Using same origin as fallback. ' +
+        'If backend is on separate Railway URL, set NEXT_PUBLIC_API_URL environment variable.'
+      );
+      return sameOrigin;
     }
     
     // If hostname contains railway or production indicators
@@ -29,19 +48,7 @@ const getApiBaseUrl = (): string => {
     }
   }
   
-  // Priority 2: Use environment variable if set (available at build time)
-  // This is the most reliable method for production
-  const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envApiUrl && envApiUrl.trim() !== '' && envApiUrl !== 'http://localhost:8000') {
-    // Remove /api/v1 if present since we add it in baseURL
-    const cleaned = envApiUrl.replace(/\/api\/v1\/?$/, '').trim();
-    if (cleaned !== '' && cleaned !== 'http://localhost:8000') {
-      return cleaned;
-    }
-  }
-  
-  // Priority 3: Fallback to localhost for development
-  // Only use this in development - production should always have env var or runtime detection
+  // Priority 3: Fallback to localhost for development only
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
@@ -49,9 +56,13 @@ const getApiBaseUrl = (): string => {
     }
   }
   
-  // Last resort: log warning and use same origin
+  // Last resort: log error and use same origin
   if (typeof window !== 'undefined') {
-    console.warn('API URL not configured. Using same origin. Set NEXT_PUBLIC_API_URL environment variable.');
+    console.error(
+      'CRITICAL: API URL not configured. ' +
+      'Set NEXT_PUBLIC_API_URL environment variable in Railway to your backend service URL. ' +
+      'Example: https://your-backend-service.up.railway.app'
+    );
     return `${window.location.protocol}//${window.location.hostname}`;
   }
   
