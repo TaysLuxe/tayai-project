@@ -342,3 +342,4 @@ config.local.py
 # Cursor-specific (keep .cursorignore but ignore indexing files)
 .cursorindexingignore
 .cursor-git-refresh
+backend/data/

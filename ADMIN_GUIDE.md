@@ -11,7 +11,8 @@ Complete guide for administrators managing the TayAI platform.
 3. [Knowledge Base Management](#knowledge-base-management)
 4. [Analytics & Reporting](#analytics--reporting)
 5. [System Configuration](#system-configuration)
-6. [Troubleshooting](#troubleshooting)
+6. [Testing & Quality Assurance](#testing--quality-assurance)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -335,6 +336,161 @@ Test persona responses with custom messages.
 **GET** `/admin/persona/context-types`
 
 Get available conversation context types.
+
+---
+
+## Testing & Quality Assurance
+
+### Pre-Launch Testing Process
+
+Before launching TayAI to members, follow the structured testing process outlined in [TESTING_GUIDE.md](./docs/guides/TESTING_GUIDE.md).
+
+#### Week 2: Initial Testing (Developer Side)
+
+1. **Run 50+ Sample Questions**
+   - Use questions from [SAMPLE_TEST_QUESTIONS.md](./docs/guides/SAMPLE_TEST_QUESTIONS.md)
+   - Test across all knowledge areas
+   - Document failures or issues
+
+2. **Basic Functionality Checks**
+   - Verify login/authentication
+   - Test chat interface
+   - Check response generation
+   - Verify error handling
+
+3. **Share Results**
+   - Compile results document
+   - Share with brand owner
+   - Address critical issues
+
+#### Week 3-4: Brand Owner Testing
+
+1. **Create Test User Account**
+   ```bash
+   POST /api/v1/admin/users
+   {
+     "username": "tay_test",
+     "email": "tay@taysluxe.com",
+     "password": "secure_password",
+     "tier": "vip",
+     "is_test_user": true
+   }
+   ```
+
+2. **Provide Test Access**
+   - Share login credentials with brand owner
+   - Provide testing checklist
+   - Share sample questions library
+
+3. **Collect Feedback**
+   - Brand owner submits feedback via API or admin panel
+   - Review and address issues
+   - Iterate until approved
+
+### Testing Feedback Management
+
+#### Submit Testing Feedback
+
+**POST** `/api/v1/admin/testing/feedback`
+
+Submit feedback from test users or admins.
+
+**Request:**
+```json
+{
+  "question_asked": "How do I melt lace properly?",
+  "response_received": "To melt lace, you need to...",
+  "issue_type": "voice_tone",
+  "severity": "medium",
+  "expected_response": "Babes, here's how I do it...",
+  "notes": "Too formal, doesn't sound like me",
+  "category": "hair_education",
+  "context_type": "hair_education"
+}
+```
+
+**Issue Types:**
+- `voice_tone` - Voice/tone mismatch
+- `accuracy` - Incorrect information
+- `missing_info` - Missing knowledge
+- `behavior` - Wrong behavior/response
+- `other` - Other issues
+
+**Severity Levels:**
+- `critical` - Blocks launch
+- `high` - Major issue
+- `medium` - Moderate issue
+- `low` - Minor issue
+
+#### List Testing Feedback
+
+**GET** `/api/v1/admin/testing/feedback`
+
+List all testing feedback with filters.
+
+**Query Parameters:**
+- `unresolved_only` (bool) - Only show unresolved feedback
+- `severity` (string) - Filter by severity
+- `issue_type` (string) - Filter by issue type
+- `limit` (int) - Results per page (default: 50)
+- `offset` (int) - Pagination offset
+
+**Response:**
+```json
+{
+  "feedback": [...],
+  "total": 25,
+  "unresolved_count": 8,
+  "critical_count": 2
+}
+```
+
+#### Get Specific Feedback
+
+**GET** `/api/v1/admin/testing/feedback/{feedback_id}`
+
+Get detailed feedback by ID.
+
+#### Update Feedback (Mark as Resolved)
+
+**PATCH** `/api/v1/admin/testing/feedback/{feedback_id}`
+
+Mark feedback as resolved.
+
+**Request:**
+```json
+{
+  "is_resolved": true,
+  "resolved_notes": "Fixed tone in persona prompt, updated KB with correct info"
+}
+```
+
+### Creating Test Users
+
+Test users have `is_test_user: true` flag and can:
+- Submit testing feedback
+- Access all features (no usage limits)
+- Be filtered in analytics
+
+**Create Test User:**
+```bash
+POST /api/v1/admin/users
+{
+  "username": "test_user",
+  "email": "test@example.com",
+  "password": "password",
+  "tier": "vip",
+  "is_test_user": true
+}
+```
+
+### Testing Checklist Reference
+
+See [TESTING_GUIDE.md](./docs/guides/TESTING_GUIDE.md) for complete checklist covering:
+- Voice & Tone Check
+- Accuracy Check
+- Scenario Testing
+- Consistency Checks
 
 ---
 

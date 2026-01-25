@@ -53,7 +53,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: tayai-frontend
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
@@ -66,7 +66,6 @@ services:
       - /app/.next
     depends_on:
       - backend
-    command: npm run dev
 
 volumes:
   postgres_data:
