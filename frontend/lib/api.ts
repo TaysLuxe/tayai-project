@@ -16,22 +16,25 @@ const getApiBaseUrl = (): string => {
   }
   
   // Priority 2: Runtime detection for production (client-side only)
-  // Only use this if environment variable is not set
+  // If NEXT_PUBLIC_API_URL is not set, use same origin (Next.js rewrites will proxy)
+  // This works when Next.js rewrites are configured to proxy /api/v1/* to backend
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
     
-    // Production domain - try same domain first (if backend is proxied)
-    // Note: This assumes backend is on same domain or proxied
-    // If backend is on separate Railway URL, NEXT_PUBLIC_API_URL must be set
+    // Production domain - use same origin (Next.js rewrites will handle proxying)
+    // This assumes Next.js rewrites are configured in next.config.js
     if (hostname === 'ai.taysluxeacademy.com' || hostname === 'taysluxeacademy.com') {
-      // Try same domain first (if backend is proxied through Railway)
-      // If this doesn't work, NEXT_PUBLIC_API_URL must be set to backend Railway URL
+      // Use same origin - Next.js rewrites will proxy /api/v1/* to backend
+      // If rewrites are not configured, set NEXT_PUBLIC_API_URL to backend Railway URL
       const sameOrigin = `${protocol}//${hostname}`;
-      console.warn(
-        'NEXT_PUBLIC_API_URL not set. Using same origin as fallback. ' +
-        'If backend is on separate Railway URL, set NEXT_PUBLIC_API_URL environment variable.'
-      );
+      if (!envApiUrl) {
+        console.warn(
+          'NEXT_PUBLIC_API_URL not set. Using same origin with Next.js rewrites. ' +
+          'Ensure BACKEND_API_URL is set in Railway for rewrites to work, ' +
+          'or set NEXT_PUBLIC_API_URL to backend Railway URL for direct API calls.'
+        );
+      }
       return sameOrigin;
     }
     
