@@ -7,10 +7,19 @@ const getApiBaseUrl = (): string => {
   // This is the most reliable method for production
   // Railway should set NEXT_PUBLIC_API_URL to the backend service URL
   const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+  // Debug logging (only in browser console)
+  if (typeof window !== 'undefined') {
+    console.log('[API Client] NEXT_PUBLIC_API_URL:', envApiUrl || 'NOT SET');
+  }
+  
   if (envApiUrl && envApiUrl.trim() !== '' && envApiUrl !== 'http://localhost:8000') {
     // Remove /api/v1 if present since we add it in baseURL
     const cleaned = envApiUrl.replace(/\/api\/v1\/?$/, '').trim();
     if (cleaned !== '' && cleaned !== 'http://localhost:8000') {
+      if (typeof window !== 'undefined') {
+        console.log('[API Client] Using API URL from environment:', cleaned);
+      }
       return cleaned;
     }
   }
@@ -28,13 +37,11 @@ const getApiBaseUrl = (): string => {
       // Use same origin - Next.js rewrites will proxy /api/v1/* to backend
       // If rewrites are not configured, set NEXT_PUBLIC_API_URL to backend Railway URL
       const sameOrigin = `${protocol}//${hostname}`;
-      if (!envApiUrl) {
-        console.warn(
-          'NEXT_PUBLIC_API_URL not set. Using same origin with Next.js rewrites. ' +
-          'Ensure BACKEND_API_URL is set in Railway for rewrites to work, ' +
-          'or set NEXT_PUBLIC_API_URL to backend Railway URL for direct API calls.'
-        );
-      }
+      console.error(
+        '[API Client] NEXT_PUBLIC_API_URL is not set! ' +
+        'Set NEXT_PUBLIC_API_URL=https://api.taysluxeacademy.com in Railway frontend service variables. ' +
+        'Falling back to same origin (this will cause 404 errors).'
+      );
       return sameOrigin;
     }
     
@@ -61,10 +68,12 @@ const getApiBaseUrl = (): string => {
   
   // Last resort: log error and use same origin
   if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
     console.error(
-      'CRITICAL: API URL not configured. ' +
-      'Set NEXT_PUBLIC_API_URL environment variable in Railway to your backend service URL. ' +
-      'Example: https://your-backend-service.up.railway.app'
+      '[API Client] CRITICAL: API URL not configured. ' +
+      `Current hostname: ${hostname}. ` +
+      'Set NEXT_PUBLIC_API_URL=https://api.taysluxeacademy.com in Railway frontend service variables and redeploy. ' +
+      'Example: https://api.taysluxeacademy.com'
     );
     return `${window.location.protocol}//${window.location.hostname}`;
   }
