@@ -155,6 +155,21 @@ In Railway backend service:
 railway run alembic upgrade head
 ```
 
+### Step 9.5: Seed Test Users (Optional)
+
+After migrations, you can create test users for development/testing:
+
+```bash
+railway run python seed_users.py
+```
+
+This creates three test users:
+- **testuser** / **testpassword123** (Basic tier)
+- **vipuser** / **testpassword123** (VIP tier)
+- **admin** / **adminpassword123** (Admin)
+
+**Note:** For production, users should register via the `/register` endpoint or frontend.
+
 ### Step 10: Configure Custom Domain
 
 1. In Railway project → **Settings** → **Domains**
@@ -174,6 +189,63 @@ NEXT_PUBLIC_WS_URL=wss://ai.taysluxeacademy.com/api
 ```
 
 Redeploy frontend.
+
+### Step 12: Test Registration Feature
+
+After deployment, test the registration feature:
+
+1. **Via Frontend:**
+   - Navigate to `https://ai.taysluxeacademy.com/register`
+   - Fill in registration form:
+     - Email: `your-email@example.com`
+     - Username: `your-username`
+     - Password: `your-password` (min 8 characters)
+   - Submit form
+   - You'll be redirected to login page
+
+2. **Via API:**
+   ```bash
+   curl -X POST https://ai.taysluxeacademy.com/api/v1/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{
+       "email": "user@example.com",
+       "username": "newuser",
+       "password": "securepassword123"
+     }'
+   ```
+
+3. **Verify Registration:**
+   - Check that new users are created with Basic tier
+   - Verify 7-day trial period is set for Basic tier users
+   - Test login with new credentials
+
+### Step 13: Registration Configuration
+
+Ensure these settings are correct for registration:
+
+**Backend Environment Variables:**
+- `BACKEND_CORS_ORIGINS` must include your frontend domain
+- `JWT_SECRET_KEY` must be set (for token generation after registration)
+- `DATABASE_URL` must be configured (for user storage)
+
+**Frontend Environment Variables:**
+- `NEXT_PUBLIC_API_URL` must point to your backend API
+- Should be: `https://ai.taysluxeacademy.com/api/v1` (or your backend URL)
+
+**CORS Configuration:**
+Registration requires CORS to be properly configured. Ensure:
+```bash
+BACKEND_CORS_ORIGINS=["https://ai.taysluxeacademy.com","https://taysluxeacademy.com"]
+```
+
+**Registration Features:**
+- ✅ User registration via `/register` endpoint
+- ✅ Email and username uniqueness validation
+- ✅ Password hashing with bcrypt
+- ✅ Automatic Basic tier assignment
+- ✅ 7-day trial period for Basic tier
+- ✅ Redirect to login after successful registration
+- ✅ Error handling for duplicate users
 
 ---
 
@@ -283,6 +355,24 @@ If you choose Railway with subdomain:
 1. **Decide:** Subdomain (Railway) or Subpath (VPS)?
 2. **If Railway:** Follow this guide
 3. **If VPS:** Follow `PRODUCTION_DEPLOYMENT_GUIDE.md`
+
+## 📋 Registration Feature
+
+The registration feature is fully implemented and ready for Railway deployment:
+
+- ✅ Frontend registration page at `/register`
+- ✅ Backend API endpoint at `/api/v1/auth/register`
+- ✅ User validation and password hashing
+- ✅ Automatic Basic tier assignment
+- ✅ 7-day trial period for new users
+
+**For detailed registration setup and testing, see:**
+- [Railway Registration Setup Guide](./RAILWAY_REGISTRATION_SETUP.md)
+
+**Quick Test:**
+After deployment, test registration at:
+- Frontend: `https://ai.taysluxeacademy.com/register`
+- API: `POST https://ai.taysluxeacademy.com/api/v1/auth/register`
 
 Want me to create a Railway-specific docker-compose or configuration files?
 

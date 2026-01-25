@@ -76,13 +76,26 @@ This will start:
 docker-compose exec backend alembic upgrade head
 ```
 
-### Step 5: Enable pgvector Extension
+### Step 5: Seed Test Users (Optional)
+
+Create test users for development:
+
+```bash
+docker-compose exec backend python seed_users.py
+```
+
+This creates test users you can use to login:
+- **testuser** / **testpassword123** (Basic tier)
+- **vipuser** / **testpassword123** (VIP tier)
+- **admin** / **adminpassword123** (Admin)
+
+### Step 6: Enable pgvector Extension
 
 ```bash
 docker-compose exec postgres psql -U tayai_user -d tayai_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
-### Step 6: Access the Application
+### Step 7: Access the Application
 
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
@@ -158,7 +171,22 @@ BACKEND_CORS_ORIGINS=["http://localhost:3000"]
 alembic upgrade head
 ```
 
-#### Step 6: Start Backend Server
+#### Step 6: Seed Test Users (Optional)
+
+Create test users for development and testing:
+
+```bash
+python seed_users.py
+```
+
+This creates three test users:
+- **testuser** / **testpassword123** (Basic tier)
+- **vipuser** / **testpassword123** (VIP tier)
+- **admin** / **adminpassword123** (Admin)
+
+See [backend/README_SEED.md](./backend/README_SEED.md) for details.
+
+#### Step 7: Start Backend Server
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -309,7 +337,9 @@ Visit: http://localhost:8000/docs
 ### Frontend
 
 1. Open http://localhost:3000
-2. Login with test credentials (create user first via `/api/v1/auth/register`)
+2. Login with test credentials:
+   - If you ran `seed_users.py`, use: **testuser** / **testpassword123**
+   - Or register a new account at `/register`
 3. Test the chat interface
 
 ---

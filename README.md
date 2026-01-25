@@ -124,6 +124,7 @@ npm test
 ## 📚 Documentation
 
 - **[Railway Deployment Guide](./RAILWAY_DEPLOYMENT_GUIDE.md)** - Complete Railway deployment instructions
+- **[Railway Registration Setup](./RAILWAY_REGISTRATION_SETUP.md)** - Registration feature setup for Railway
 - **[Tay AI Specification](./TAY_AI_SPECIFICATION.md)** - Complete behavior, tone, and knowledge base requirements
 - **[API Documentation](./API_DOCUMENTATION.md)** - API endpoints and usage (also available at `/docs` when backend is running)
 - **[Architecture](./ARCHITECTURE.md)** - System architecture and design
