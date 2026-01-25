@@ -11,20 +11,30 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000',
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     const projectRoot = path.resolve(__dirname);
     
     // Explicitly set alias for @ to project root
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': projectRoot,
-    };
+    // This ensures @/lib/api resolves to ./lib/api.ts
+    if (!config.resolve) {
+      config.resolve = {};
+    }
+    
+    if (!config.resolve.alias) {
+      config.resolve.alias = {};
+    }
+    
+    config.resolve.alias['@'] = projectRoot;
     
     // Ensure modules are resolved from project root
+    if (!config.resolve.modules) {
+      config.resolve.modules = [];
+    }
+    
     config.resolve.modules = [
       path.resolve(projectRoot, 'node_modules'),
       'node_modules',
-      ...(config.resolve.modules || []),
+      ...config.resolve.modules,
     ];
     
     return config;
