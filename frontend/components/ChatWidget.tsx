@@ -83,12 +83,25 @@ export default function ChatWidget() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0f0f0f]">
+    <div className="flex flex-col h-full bg-[#0f0f0f] relative overflow-hidden">
+      {/* Gradient semi-circle background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Semi-circle container */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[60%] w-[140%] aspect-square">
+          {/* Blue/purple blob - left side */}
+          <div className="absolute left-[10%] top-[20%] w-[45%] h-[45%] rounded-full bg-[#60a5fa] opacity-60 blur-[80px]"></div>
+          {/* Pink/red blob - right side */}
+          <div className="absolute right-[10%] top-[15%] w-[50%] h-[50%] rounded-full bg-[#f472b6] opacity-50 blur-[80px]"></div>
+          {/* Purple center blend */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-[25%] w-[40%] h-[40%] rounded-full bg-[#a855f7] opacity-40 blur-[60px]"></div>
+        </div>
+      </div>
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+      <div className="relative z-10 flex-1 overflow-y-auto px-4 sm:px-6 py-6">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-20 h-20 rounded-full overflow-hidden mb-4 shadow-lg shadow-[#cba2ff]/20">
+            <div className="w-20 h-20 rounded-full overflow-hidden mb-4 shadow-lg shadow-[#cba2ff]/30">
               <Image
                 src="/tayai-avatar.png"
                 alt="TayAI"
@@ -97,8 +110,8 @@ export default function ChatWidget() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <h3 className="text-lg font-medium text-white mb-1">Start a conversation</h3>
-            <p className="text-sm text-gray-500 max-w-sm">
+            <h3 className="text-md font-medium text-white mb-1">Start a conversation</h3>
+            <p className="text-sm text-purple-400 max-w-sm">
               Ask TayAI anything about hair business, marketing, clients, or growing your brand.
             </p>
           </div>
@@ -180,7 +193,7 @@ export default function ChatWidget() {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-[#2a2a2a] bg-[#1a1a1a] px-4 sm:px-6 py-4">
+      <div className="relative z-10 border-t border-[#2a2a2a] bg-[#1a1a1a] px-4 sm:px-6 py-4">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto">
           <div className="flex items-center gap-3">
             <input

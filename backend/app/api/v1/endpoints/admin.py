@@ -13,7 +13,7 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.db.database import get_db
 from app.db.models import User, ChatMessage, UsageTracking, MissingKBItem, QuestionLog
@@ -473,7 +473,7 @@ async def get_system_overview(
     total_cost_usd = total_cost_micro / 1_000_000
     
     # Messages today
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     result = await db.execute(
         select(func.count(ChatMessage.id))
         .where(ChatMessage.created_at >= today_start)
@@ -527,7 +527,7 @@ async def get_activity_stats(
     """Get activity statistics over time."""
     from sqlalchemy import cast, Date
     
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     # Messages per day
     result = await db.execute(
@@ -584,7 +584,7 @@ async def get_top_users(
     admin: dict = Depends(get_current_admin)
 ):
     """Get top users by message count."""
-    start_date = datetime.utcnow() - timedelta(days=period_days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=period_days)
     
     result = await db.execute(
         select(
@@ -668,7 +668,7 @@ async def update_missing_kb_item(
     if update.is_resolved is not None:
         item.is_resolved = update.is_resolved
         if update.is_resolved:
-            item.resolved_at = datetime.utcnow()
+            item.resolved_at = datetime.now(timezone.utc)
     
     if update.resolved_by_kb_id is not None:
         item.resolved_by_kb_id = update.resolved_by_kb_id
@@ -820,7 +820,7 @@ async def get_question_stats(
     admin: dict = Depends(get_current_admin)
 ):
     """Get statistics about questions asked."""
-    start_date = datetime.utcnow() - timedelta(days=period_days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=period_days)
     
     # Total questions
     result = await db.execute(
@@ -906,7 +906,7 @@ async def export_question_logs(
     admin: dict = Depends(get_current_admin)
 ):
     """Export question logs for insights and content development."""
-    start_date = datetime.utcnow() - timedelta(days=period_days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=period_days)
     
     # Get aggregated questions (by normalized question)
     result = await db.execute(
@@ -951,8 +951,8 @@ async def export_question_logs(
                 user_id=sample_user_id or 0,
                 user_tier=row.user_tier,
                 count=row.count,
-                first_asked=row.first_asked or datetime.utcnow(),
-                last_asked=row.last_asked or datetime.utcnow()
+                first_asked=row.first_asked or datetime.now(timezone.utc),
+                last_asked=row.last_asked or datetime.now(timezone.utc)
             )
         )
     

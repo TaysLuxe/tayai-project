@@ -104,7 +104,7 @@ class UserService(BaseService[User]):
         trial_start = None
         trial_end = None
         if tier == UserTier.BASIC and start_trial:
-            trial_start = datetime.utcnow()
+            trial_start = datetime.now(timezone.utc)
             trial_end = trial_start + timedelta(days=TRIAL_PERIOD_DAYS)
         
         user = User(
@@ -296,7 +296,7 @@ class UserService(BaseService[User]):
         if not user.trial_end_date:
             return False
         
-        return datetime.utcnow() < user.trial_end_date
+        return datetime.now(timezone.utc) < user.trial_end_date
     
     async def get_trial_status(self, user_id: int) -> Dict:
         """

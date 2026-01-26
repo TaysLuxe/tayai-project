@@ -41,7 +41,7 @@ export default function Dashboard() {
             width={100}
             height={50}
             className="h-auto"
-            style={{ width: '100px' }}
+            style={{ width: '120px' }}
             priority
           />
         </div>
@@ -49,14 +49,20 @@ export default function Dashboard() {
         {/* User Info */}
         <div className="p-4 border-b border-[#2a2a2a]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#cba2ff]/20 flex items-center justify-center">
-              <span className="text-[#cba2ff] font-semibold text-sm">
-                {user?.username?.charAt(0).toUpperCase()}
-              </span>
+            {/* Avatar with concentric glow rings */}
+            <div className="relative flex items-center justify-center">
+              <div className="absolute w-16 h-16 rounded-full bg-[#cba2ff]/5"></div>
+              <div className="absolute w-14 h-14 rounded-full bg-[#cba2ff]/10"></div>
+              <div className="absolute w-12 h-12 rounded-full bg-[#cba2ff]/20"></div>
+              <div className="relative w-10 h-10 rounded-full bg-[#cba2ff] flex items-center justify-center">
+                <span className="text-black font-semibold text-base">
+                  {user?.username?.charAt(0).toUpperCase()}
+                </span>
+              </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-white">{user?.username}</p>
-              <p className="text-xs text-gray-500 capitalize">{user?.tier} Tier</p>
+              <p className="text-base font-semibold text-white">{user?.username}</p>
+              <p className="text-sm text-gray-500 capitalize">{user?.tier} Tier</p>
             </div>
           </div>
         </div>
@@ -64,7 +70,7 @@ export default function Dashboard() {
         {/* Navigation */}
         <nav className="flex-1 p-4">
           <div className="space-y-1">
-            <a href="#" className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-[#cba2ff] bg-[#cba2ff]/10 rounded-lg">
+            <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-[#cba2ff] bg-[#cba2ff]/10 rounded-lg">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
@@ -77,9 +83,9 @@ export default function Dashboard() {
         <div className="p-4 border-t border-[#2a2a2a]">
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 bg-[#242424] rounded-lg hover:bg-[#2a2a2a] transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-400 bg-[#242424] rounded-lg hover:bg-[#2a2a2a] transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Sign out
@@ -112,7 +118,7 @@ export default function Dashboard() {
 
             {/* Title & Status */}
             <div>
-              <h1 className="text-xl font-semibold text-white">Chat with TayAI</h1>
+              <h1 className="text-md font-medium text-white">Chat with TayAI</h1>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                 <span className="text-sm text-gray-500">Online</span>
@@ -122,10 +128,14 @@ export default function Dashboard() {
 
           {/* Mobile user info */}
           <div className="md:hidden flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#cba2ff]/20 flex items-center justify-center">
-              <span className="text-[#cba2ff] font-semibold text-xs">
-                {user?.username?.charAt(0).toUpperCase()}
-              </span>
+            <div className="relative flex items-center justify-center">
+              <div className="absolute w-12 h-12 rounded-full bg-[#cba2ff]/5"></div>
+              <div className="absolute w-10 h-10 rounded-full bg-[#cba2ff]/10"></div>
+              <div className="relative w-8 h-8 rounded-full bg-[#cba2ff] flex items-center justify-center">
+                <span className="text-black font-semibold text-xs">
+                  {user?.username?.charAt(0).toUpperCase()}
+                </span>
+              </div>
             </div>
           </div>
         </header>

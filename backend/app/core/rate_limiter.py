@@ -7,7 +7,7 @@ Provides:
 - Configurable limits by tier
 - Automatic cleanup of expired keys
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 import redis
 from fastapi import Request, HTTPException, status
@@ -52,7 +52,7 @@ class RateLimiter:
     
     def _clean_old_requests(self, key: str, window_seconds: int) -> None:
         """Remove requests outside the sliding window."""
-        cutoff = datetime.utcnow().timestamp() - window_seconds
+        cutoff = datetime.now(timezone.utc).timestamp() - window_seconds
         redis_client.zremrangebyscore(key, 0, cutoff)
     
     def _count_requests(self, key: str) -> int:
@@ -61,7 +61,7 @@ class RateLimiter:
     
     def _add_request(self, key: str, window_seconds: int) -> None:
         """Add a new request timestamp to the window."""
-        now = datetime.utcnow().timestamp()
+        now = datetime.now(timezone.utc).timestamp()
         redis_client.zadd(key, {f"{now}": now})
         redis_client.expire(key, window_seconds + 1)
     
