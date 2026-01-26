@@ -22,6 +22,8 @@ After running the seed script, these credentials will be available:
 
 ### Option 1: Railway CLI (Recommended)
 
+The Railway dashboard doesn't have a shell/terminal interface. Use the Railway CLI instead:
+
 1. Install Railway CLI:
    ```bash
    npm i -g @railway/cli
@@ -32,29 +34,25 @@ After running the seed script, these credentials will be available:
    railway login
    ```
 
-3. Link to your project:
+3. Navigate to your backend directory:
+   ```bash
+   cd backend
+   ```
+
+4. Link to your Railway project:
    ```bash
    railway link
    ```
+   (Select your project and service when prompted)
 
-4. Run the seed script:
+5. Run the seed script:
    ```bash
    railway run python seed_users.py
    ```
 
-### Option 2: Railway Dashboard
+   The script will output which users were created or skipped. You can also check the "Deployments" tab in Railway dashboard to see the execution logs.
 
-1. Go to your Railway project dashboard
-2. Open the backend service
-3. Go to the "Deployments" tab
-4. Click on the latest deployment
-5. Open the "Shell" tab
-6. Run:
-   ```bash
-   python seed_users.py
-   ```
-
-### Option 3: One-time Setup Script
+### Option 2: One-time Setup Script (Alternative)
 
 You can also add this to your Railway startup command temporarily:
 
