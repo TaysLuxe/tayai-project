@@ -34,7 +34,7 @@ TEST_USERS = [
     {
         "email": "vip@example.com",
         "username": "vipuser",
-        "password": "testpassword123",
+        "password": "vippassword123",
         "tier": UserTier.VIP,
         "is_admin": False,
     },

@@ -24,7 +24,7 @@ The script creates three test users:
 
 ### 2. VIP Tier User
 - **Username:** `vipuser`
-- **Password:** `testpassword123`
+- **Password:** `vippassword123`
 - **Email:** `vip@example.com`
 - **Tier:** VIP
 
