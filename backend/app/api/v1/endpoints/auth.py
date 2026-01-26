@@ -42,6 +42,12 @@ import httpx
 import logging
 import secrets
 
+from pydantic import BaseModel
+
+class LoginSchema(BaseModel):
+    username: str
+    password: str
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -50,32 +56,30 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/lo
 
 @router.post("/login", response_model=Token)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    payload: LoginSchema,
     db: AsyncSession = Depends(get_db)
 ):
     """
     User login endpoint.
-    
-    Returns both access token and refresh token for session management.
+    Accepts JSON body: { "username": "...", "password": "..." }
     """
     user_service = UserService(db)
-    user = await user_service.get_user_by_username(form_data.username)
-    
-    if not user or not verify_password(form_data.password, user.hashed_password):
+
+    user = await user_service.get_user_by_username(payload.username)
+
+    if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Incorrect username or password"
         )
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
-    
-    return create_user_tokens(user)
 
+    return create_user_tokens(user)
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
@@ -119,7 +123,7 @@ async def refresh_token(
     return create_user_tokens(user)
 
 
-@router.post("/verify", response_model=UserVerify)
+@router.get("/verify", response_model=UserVerify)
 async def verify_token(token: str = Depends(oauth2_scheme)):
     """Verify JWT token and return user info."""
     payload = decode_access_token(token)
