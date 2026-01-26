@@ -5,6 +5,7 @@ This package provides the complete prompt engineering system:
 - Persona: WHO TayAI is (identity, expertise, style)
 - Context: WHAT type of help is needed (hair, business, etc.)
 - Generation: HOW prompts are built for the OpenAI API
+- Recipes: Structured response templates for specific question types
 - Fallbacks: Graceful handling of edge cases
 
 Usage:
@@ -15,12 +16,15 @@ Usage:
         detect_conversation_context,
         get_system_prompt,
         get_context_injection_prompt,
+        detect_recipe,
+        get_recipe_prompt,
         FALLBACK_RESPONSES
     )
 """
 from .persona import PersonaConfig, DEFAULT_PERSONA
 from .context import ConversationContext, CONTEXT_KEYWORDS, detect_conversation_context
 from .generation import get_system_prompt, get_context_injection_prompt
+from .recipes import detect_recipe, get_recipe_prompt, get_all_recipes_reference, ALL_RECIPES
 from .fallbacks import FALLBACK_RESPONSES
 
 __all__ = [
@@ -34,6 +38,11 @@ __all__ = [
     # Generation
     "get_system_prompt",
     "get_context_injection_prompt",
+    # Recipes
+    "detect_recipe",
+    "get_recipe_prompt",
+    "get_all_recipes_reference",
+    "ALL_RECIPES",
     # Fallbacks
     "FALLBACK_RESPONSES",
 ]

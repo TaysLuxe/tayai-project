@@ -34,7 +34,9 @@ from app.core.prompts import (
     get_context_injection_prompt,
     detect_conversation_context,
     ConversationContext,
-    FALLBACK_RESPONSES
+    FALLBACK_RESPONSES,
+    detect_recipe,
+    get_recipe_prompt,
 )
 from app.db.models import ChatMessage, MissingKBItem, QuestionLog
 from app.services.rag_service import RAGService, ContextResult
@@ -249,6 +251,15 @@ class ChatService:
                 kb_confidence=kb_confidence
             )}
         ]
+        
+        # Detect and add recipe if applicable
+        recipe = detect_recipe(user_message)
+        if recipe:
+            logger.info(f"Recipe detected: {recipe.name}")
+            messages.append({
+                "role": "system",
+                "content": get_recipe_prompt(recipe)
+            })
         
         # Add RAG context with confidence info
         if context:
