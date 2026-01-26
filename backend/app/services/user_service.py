@@ -28,7 +28,7 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.services.base import BaseService
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class UserService(BaseService[User]):
@@ -320,9 +320,13 @@ class UserService(BaseService[User]):
                 "trial_end_date": None
             }
         
-        now = datetime.utcnow()
-        trial_active = now < user.trial_end_date
-        days_remaining = max(0, (user.trial_end_date - now).days)
+        now = datetime.now(timezone.utc)
+        # Make trial_end_date timezone-aware if it isn't
+        trial_end = user.trial_end_date
+        if trial_end.tzinfo is None:
+            trial_end = trial_end.replace(tzinfo=timezone.utc)
+        trial_active = now < trial_end
+        days_remaining = max(0, (trial_end - now).days)
         
         return {
             "trial_active": trial_active,

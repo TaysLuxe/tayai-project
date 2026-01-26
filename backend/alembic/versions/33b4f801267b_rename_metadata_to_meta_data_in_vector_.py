@@ -1,7 +1,7 @@
 """rename_metadata_to_meta_data_in_vector_embeddings
 
 Revision ID: 33b4f801267b
-Revises: a8aed5317553
+Revises: b_migrate_pinecone_to_pgvector
 Create Date: 2026-01-25 03:00:06.708212
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '33b4f801267b'
-down_revision: Union[str, Sequence[str], None] = 'a8aed5317553'
+down_revision: Union[str, Sequence[str], None] = 'b_migrate_pinecone_to_pgvector'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

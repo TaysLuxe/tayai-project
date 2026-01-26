@@ -5,7 +5,6 @@ import ChatWidget from '@/components/ChatWidget';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 
 export default function Dashboard() {
   const { isAuthenticated, logout, user, loading } = useAuth();
@@ -19,12 +18,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-[#0f0f0f]">
         <div className="text-center px-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-gray-100 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400 text-sm">
-            Loading...
-          </p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
+          <p className="mt-4 text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -33,67 +30,104 @@ export default function Dashboard() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:h-16 sm:items-center sm:justify-between py-3 sm:py-0 gap-3 sm:gap-0">
-
-            
-          <Link href="/" className="flex items-center">
+    <div className="flex min-h-screen bg-[#0f0f0f]">
+      {/* Sidebar */}
+      <aside className="hidden md:flex md:w-64 lg:w-72 flex-col bg-[#1a1a1a] border-r border-[#2a2a2a]">
+        {/* Logo */}
+        <div className="p-4 border-b border-[#2a2a2a] flex justify-center">
           <Image
             src="/logo.png"
             alt="Tays Luxe Academy"
-            width={200}
-            height={100}
-            className="h-12 w-auto sm:h-12"
+            width={180}
+            height={90}
+            className="h-10 w-auto"
             priority
           />
-          </Link>
+        </div>
 
-            {/* User Info + Logout */}
-            <div className="flex items-center justify-between sm:justify-end gap-3">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {user?.username}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                  {user?.tier} tier
-                </p>
-              </div>
-
-              <button
-                onClick={logout}
-                className="inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-400 focus:ring-offset-2 transition-colors whitespace-nowrap"
-              >
-                Sign out
-              </button>
+        {/* User Info */}
+        <div className="p-4 border-b border-[#2a2a2a]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#cba2ff]/20 flex items-center justify-center">
+              <span className="text-[#cba2ff] font-semibold text-sm">
+                {user?.username?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">{user?.username}</p>
+              <p className="text-xs text-gray-500 capitalize">{user?.tier} Tier</p>
             </div>
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
-        <div className="mx-auto h-full max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-          <div className="h-full max-w-4xl mx-auto flex flex-col">
-            
-            {/* Welcome */}
-            <div className="mb-4 sm:mb-6">
-              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
-                Welcome back, {user?.username}!
-              </h1>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                AI-powered assistant for hair business mentorship
-              </p>
-            </div>
-
-            {/* Chat Area */}
-            <div className="flex-1 overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-              <ChatWidget />
-            </div>
-
+        {/* Navigation */}
+        <nav className="flex-1 p-4">
+          <div className="space-y-1">
+            <a href="#" className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-[#cba2ff] bg-[#cba2ff]/10 rounded-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Chat with TayAI
+            </a>
           </div>
+        </nav>
+
+        {/* Sign Out */}
+        <div className="p-4 border-t border-[#2a2a2a]">
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 bg-[#242424] rounded-lg hover:bg-[#2a2a2a] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Chat Area */}
+      <main className="flex-1 flex flex-col bg-[#0f0f0f]">
+        {/* Chat Header */}
+        <header className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[#2a2a2a] bg-[#1a1a1a]">
+          <div className="flex items-center gap-4">
+            {/* Mobile menu button */}
+            <button className="md:hidden p-2 -ml-2 text-gray-400 hover:text-white">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* AI Avatar */}
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#cba2ff] to-[#9b6dd6] flex items-center justify-center shadow-lg shadow-[#cba2ff]/20">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+
+            {/* Title & Status */}
+            <div>
+              <h1 className="text-xl font-semibold text-white">Chat with TayAI</h1>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                <span className="text-sm text-gray-500">Online</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile user info */}
+          <div className="md:hidden flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[#cba2ff]/20 flex items-center justify-center">
+              <span className="text-[#cba2ff] font-semibold text-xs">
+                {user?.username?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* Chat Content */}
+        <div className="flex-1 overflow-hidden">
+          <ChatWidget />
         </div>
       </main>
     </div>
