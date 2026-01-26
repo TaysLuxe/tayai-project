@@ -323,7 +323,7 @@ class RAGService:
                     "kb_id": knowledge_base_id,
                     "embedding": embedding_str,
                     "content": chunk["text"],
-                    "metadata": json.dumps(chunk_metadata),
+                    "meta_data": json.dumps(chunk_metadata),
                     "namespace": namespace,
                     "chunk_index": i,
                     "parent_id": content_id
@@ -372,7 +372,7 @@ class RAGService:
                 "kb_id": knowledge_base_id,
                 "embedding": embedding_str,
                 "content": content,
-                "metadata": json.dumps(full_metadata),
+                "meta_data": json.dumps(full_metadata),
                 "namespace": namespace,
                 "parent_id": content_id
             }

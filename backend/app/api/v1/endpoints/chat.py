@@ -377,10 +377,10 @@ async def websocket_chat(websocket: WebSocket):
                 "type": "error",
                 "data": {"message": "An error occurred processing your message"}
             })
-        except:
+        except Exception:
             pass
     finally:
         try:
             await websocket.close()
-        except:
+        except Exception:
             pass

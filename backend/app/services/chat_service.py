@@ -160,7 +160,7 @@ class ChatService:
             # Rollback any failed transaction
             try:
                 await self.db.rollback()
-            except:
+            except Exception:
                 pass
             return ChatResponse(
                 response=FALLBACK_RESPONSES["error_graceful"],
@@ -550,7 +550,7 @@ class ChatService:
             logger.error(f"Error logging question/missing KB: {e}")
             try:
                 await self.db.rollback()
-            except:
+            except Exception:
                 pass
     
     @staticmethod

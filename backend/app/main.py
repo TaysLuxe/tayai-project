@@ -10,7 +10,7 @@ Configures and starts the FastAPI application with:
 """
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -164,12 +164,12 @@ if settings.ENVIRONMENT == "production":
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log all incoming requests."""
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     
     response = await call_next(request)
     
     # Calculate request duration
-    duration = (datetime.utcnow() - start_time).total_seconds() * 1000
+    duration = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
     
     # Log request info (skip health checks)
     if request.url.path not in ["/health", "/"]:
@@ -207,5 +207,5 @@ async def health_check():
     return {
         "status": "healthy",
         "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }

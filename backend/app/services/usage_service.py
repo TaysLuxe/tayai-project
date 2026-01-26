@@ -4,7 +4,7 @@ Usage service - Business logic for usage tracking and rate limiting
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.db.models import UsageTracking, User
 from app.core.constants import UserTier
 from app.core.config import settings
@@ -69,7 +69,7 @@ class UsageService:
                 )
         
         # Get current period
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         period_end = (period_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         
@@ -113,7 +113,7 @@ class UsageService:
         Calculates and tracks API costs based on token usage.
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             period_end = (period_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
             
@@ -156,12 +156,12 @@ class UsageService:
             logger.error(f"Error recording usage: {e}")
             try:
                 await self.db.rollback()
-            except:
+            except Exception:
                 pass
     
     async def get_usage_status(self, user_id: int, tier: str) -> UsageStatus:
         """Get current usage status for user"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         period_end = (period_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         
