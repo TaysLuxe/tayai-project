@@ -1,6 +1,7 @@
 """
 Usage service - Business logic for usage tracking and rate limiting
 """
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timedelta
@@ -12,6 +13,8 @@ from app.schemas.usage import UsageStatus
 from app.services.user_service import UserService
 from app.utils.cost_calculator import estimate_cost_from_total_tokens
 import redis
+
+logger = logging.getLogger(__name__)
 
 # Initialize Redis client
 redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -109,45 +112,52 @@ class UsageService:
         
         Calculates and tracks API costs based on token usage.
         """
-        now = datetime.utcnow()
-        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        period_end = (period_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-        
-        # Calculate API cost
-        cost_usd = estimate_cost_from_total_tokens(tokens_used)
-        cost_micro_dollars = int(cost_usd * 1_000_000)  # Store in micro-dollars for precision
-        
-        # Get or create usage tracking record
-        result = await self.db.execute(
-            select(UsageTracking)
-            .where(
-                UsageTracking.user_id == user_id,
-                UsageTracking.period_start == period_start
+        try:
+            now = datetime.utcnow()
+            period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            period_end = (period_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            
+            # Calculate API cost
+            cost_usd = estimate_cost_from_total_tokens(tokens_used)
+            cost_micro_dollars = int(cost_usd * 1_000_000)  # Store in micro-dollars for precision
+            
+            # Get or create usage tracking record
+            result = await self.db.execute(
+                select(UsageTracking)
+                .where(
+                    UsageTracking.user_id == user_id,
+                    UsageTracking.period_start == period_start
+                )
             )
-        )
-        usage = result.scalar_one_or_none()
-        
-        if usage:
-            usage.messages_count += 1
-            usage.tokens_used += tokens_used
-            usage.api_cost += cost_micro_dollars
-        else:
-            usage = UsageTracking(
-                user_id=user_id,
-                period_start=period_start,
-                period_end=period_end,
-                messages_count=1,
-                tokens_used=tokens_used,
-                api_cost=cost_micro_dollars
-            )
-            self.db.add(usage)
-        
-        await self.db.commit()
-        
-        # Update Redis cache
-        cache_key = f"usage:{user_id}:{period_start.strftime('%Y-%m')}"
-        redis_client.incr(cache_key)
-        redis_client.expire(cache_key, 3600)
+            usage = result.scalar_one_or_none()
+            
+            if usage:
+                usage.messages_count += 1
+                usage.tokens_used += tokens_used
+                usage.api_cost += cost_micro_dollars
+            else:
+                usage = UsageTracking(
+                    user_id=user_id,
+                    period_start=period_start,
+                    period_end=period_end,
+                    messages_count=1,
+                    tokens_used=tokens_used,
+                    api_cost=cost_micro_dollars
+                )
+                self.db.add(usage)
+            
+            await self.db.commit()
+            
+            # Update Redis cache
+            cache_key = f"usage:{user_id}:{period_start.strftime('%Y-%m')}"
+            redis_client.incr(cache_key)
+            redis_client.expire(cache_key, 3600)
+        except Exception as e:
+            logger.error(f"Error recording usage: {e}")
+            try:
+                await self.db.rollback()
+            except:
+                pass
     
     async def get_usage_status(self, user_id: int, tier: str) -> UsageStatus:
         """Get current usage status for user"""

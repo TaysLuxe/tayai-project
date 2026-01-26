@@ -65,9 +65,10 @@ function LoginForm() {
             <Image
               src="/logo.png"
               alt="Tays Luxe Academy"
-              width={200}
-              height={80}
-              className="h-auto w-auto"
+              width={140}
+              height={56}
+              className="h-auto"
+              style={{ width: '200px' }}
               priority
               unoptimized
             />
