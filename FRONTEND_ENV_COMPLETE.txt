@@ -1,0 +1,63 @@
+# =============================================================================
+# COMPLETE FRONTEND ENVIRONMENT VARIABLES FOR RAILWAY
+# =============================================================================
+# Add these in Railway → Frontend Service → Variables tab
+# Format: One variable per line with quotes
+
+NEXT_PUBLIC_API_URL="https://api.taysluxeacademy.com"
+NEXT_PUBLIC_WS_URL="wss://api.taysluxeacademy.com"
+NODE_ENV="production"
+
+# =============================================================================
+# IMPORTANT NOTES FOR 502 BAD GATEWAY FIX
+# =============================================================================
+# 
+# 1. NEXT_PUBLIC_API_URL is REQUIRED
+#    - Must point to your backend service
+#    - No trailing slash, no /api/v1
+#    - Use https:// (not http://)
+#
+# 2. After setting variables, you MUST redeploy frontend
+#    - Next.js embeds NEXT_PUBLIC_* variables at BUILD TIME
+#    - Setting variable alone is not enough
+#    - Go to Railway Frontend Service → Settings → Redeploy
+#
+# 3. Verify backend is accessible first:
+#    - Test: https://api.taysluxeacademy.com/health
+#    - Should return: {"status": "healthy", ...}
+#    - If this fails, fix backend first
+#
+# 4. Check browser console after redeploy:
+#    - Should see: [API Client] NEXT_PUBLIC_API_URL: https://api.taysluxeacademy.com
+#    - If you see "NOT SET", variable wasn't set or frontend wasn't rebuilt
+#
+# =============================================================================
+# TROUBLESHOOTING 502 BAD GATEWAY
+# =============================================================================
+#
+# Step 1: Verify backend is running
+#   - Railway Dashboard → Backend Service
+#   - Check service is "Active" and "Deployed"
+#   - Check logs for errors
+#
+# Step 2: Test backend directly
+#   - Open: https://api.taysluxeacademy.com/health
+#   - If this fails, backend domain is not accessible
+#   - Fix backend/custom domain configuration first
+#
+# Step 3: Set NEXT_PUBLIC_API_URL
+#   - Railway Frontend Service → Variables
+#   - Add: NEXT_PUBLIC_API_URL="https://api.taysluxeacademy.com"
+#   - Save
+#
+# Step 4: Redeploy frontend (CRITICAL!)
+#   - Railway Frontend Service → Settings
+#   - Click "Redeploy" or trigger new deployment
+#   - Wait for build to complete (2-5 minutes)
+#
+# Step 5: Verify in browser console
+#   - Open browser console (F12 → Console)
+#   - Refresh page
+#   - Should see: [API Client] Using API URL from environment: https://api.taysluxeacademy.com
+#
+# =============================================================================
