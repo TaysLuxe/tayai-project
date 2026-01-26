@@ -110,6 +110,7 @@ class RAGService:
             # Using cosine distance (1 - cosine similarity)
             # Lower distance = higher similarity
             # Convert embedding list to PostgreSQL vector format string
+            # Note: Using vector literal format directly in SQL (safe - embedding is generated, not user input)
             embedding_str = "[" + ",".join(map(str, embedding)) + "]"
             
             query_sql = f"""
@@ -188,6 +189,12 @@ class RAGService:
             
         except Exception as e:
             logger.error(f"Error retrieving context: {e}")
+            # Rollback transaction if it's in a failed state
+            if self.db:
+                try:
+                    await self.db.rollback()
+                except Exception as rollback_error:
+                    logger.error(f"Error during rollback: {rollback_error}")
             return ContextResult("", [], 0, 0.0) if include_sources else ""
     
     def _format_context(self, result: RetrievalResult) -> str:
@@ -446,6 +453,8 @@ class RAGService:
             return []
         
         embedding = await self._generate_embedding(query)
+        # Convert embedding list to PostgreSQL vector format string
+        # Note: Using vector literal format directly in SQL (safe - embedding is generated, not user input)
         embedding_str = "[" + ",".join(map(str, embedding)) + "]"
         
         query_sql = f"""

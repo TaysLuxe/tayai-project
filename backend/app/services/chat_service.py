@@ -456,6 +456,11 @@ class ChatService:
             
         except Exception as e:
             logger.error(f"[Stream] Error: {e}")
+            # Rollback transaction if it's in a failed state
+            try:
+                await self.db.rollback()
+            except Exception as rollback_error:
+                logger.error(f"Error during rollback: {rollback_error}")
             yield self._format_sse_event("error", {
                 "message": FALLBACK_RESPONSES["error_graceful"]
             })
