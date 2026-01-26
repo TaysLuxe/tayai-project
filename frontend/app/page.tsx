@@ -38,9 +38,10 @@ export default function Dashboard() {
           <Image
             src="/logo.png"
             alt="Tays Luxe Academy"
-            width={180}
-            height={90}
-            className="h-10 w-auto"
+            width={100}
+            height={50}
+            className="h-auto"
+            style={{ width: '100px' }}
             priority
           />
         </div>
