@@ -1,8 +1,9 @@
 """
 Prompt Generation for TayAI
 
-Builds prompts for the OpenAI API. TayAI behaves like ChatGPT
-but specialized for hair business owners.
+Two-pass response system:
+Pass 1: Retrieve + outline answer strictly from KB
+Pass 2: Rewrite in Tay's voice + apply tone + accountability
 """
 from typing import Dict, List, Optional
 
@@ -14,83 +15,161 @@ def get_system_prompt(
     persona: Optional[PersonaConfig] = None,
     context_type: ConversationContext = ConversationContext.GENERAL,
     include_rag_instructions: bool = True,
-    user_tier: Optional[str] = None
+    user_tier: Optional[str] = None,
+    kb_confidence: float = 1.0  # Confidence score from RAG
 ) -> str:
     """
     Generate the system prompt for TayAI.
+    
+    Args:
+        kb_confidence: RAG retrieval confidence (0-1). Below 0.75 triggers clarifying mode.
     """
     persona = persona or DEFAULT_PERSONA
     
     # Build sections
-    behavior = _format_list_as_bullets(persona.core_behavior)
-    expertise = _format_dict_as_bullets(persona.expertise_areas)
-    style = _format_dict_as_bullets(persona.response_style)
-    accuracy = _format_list_as_bullets(persona.accuracy_rules)
-    hair_facts = _format_list_as_bullets(persona.verified_hair_knowledge)
-    business_facts = _format_list_as_bullets(persona.verified_business_knowledge)
-    avoid = _format_list_as_bullets(persona.avoid)
+    rules = _format_list_as_bullets(persona.core_rules)
+    voice = _format_dict_as_bullets(persona.voice_style)
+    structure = _format_dict_as_bullets(persona.answer_structure)
+    business = _format_list_as_bullets(persona.business_rules)
+    content = _format_list_as_bullets(persona.content_rules)
+    niche = _format_list_as_bullets(persona.niche_rules)
+    hair = _format_list_as_bullets(persona.hair_knowledge)
+    biz_knowledge = _format_list_as_bullets(persona.business_knowledge)
+    banned = ", ".join(persona.banned_words)
     guardrails = _format_list_as_bullets(persona.guardrails)
     
     # Context-specific section
     context_section = _get_context_instructions(context_type)
     
+    # Low confidence mode
+    confidence_section = ""
+    if kb_confidence < 0.75:
+        confidence_section = f"""
+## ⚠️ LOW CONFIDENCE MODE ACTIVATED
+
+Your knowledge base match confidence is LOW ({kb_confidence:.0%}).
+DO NOT give a full generic answer. Instead:
+1. Acknowledge what they're asking about
+2. Ask 1-2 clarifying questions to understand their specific situation
+3. Say: "I want to give you the right guidance here. Can you tell me more about [specific aspect]?"
+
+{persona.low_confidence_response}
+"""
+    
     # RAG section
     rag_section = _get_rag_instructions() if include_rag_instructions else ""
     
-    return f"""# You are {persona.name}
+    return f"""# TAY AI - AUTHORITATIVE BUSINESS MENTOR
 
 {persona.identity}
 
-## How You Behave
-{behavior}
+## CORE RULES (NON-NEGOTIABLE)
+{rules}
 
-## Your Expertise
-{expertise}
+## YOUR VOICE
+{voice}
 
-## Response Style
-{style}
+## ANSWER STRUCTURE (Follow This Order)
+{structure}
 
-## CRITICAL: Accuracy Rules
-{accuracy}
+## 🚫 BANNED WORDS - NEVER USE THESE
+{banned}
 
-## Verified Hair Knowledge (You Can State These as Facts)
-{hair_facts}
+If you catch yourself using these words, REWRITE the sentence.
+Exception: "luxury" is allowed ONLY when discussing pricing/positioning.
+{confidence_section}
+## BUSINESS ADVICE RULES
+{business}
 
-## Verified Business Knowledge (You Can State These as Facts)
-{business_facts}
+## CAPTION/CONTENT RULES
+When writing captions, scripts, or content:
+{content}
 
-## What to Avoid
-{avoid}
+## NICHE/POSITIONING ADVICE
+{niche}
 
-## Boundaries
-{guardrails}
+## VERIFIED HAIR KNOWLEDGE
+{hair}
+
+## VERIFIED BUSINESS KNOWLEDGE
+{biz_knowledge}
 {context_section}
 {rag_section}
-## Important
+## EXAMPLE OF YOUR VOICE
 
-You are like ChatGPT, but specialized for hair professionals. Be helpful, accurate, and honest.
-If knowledge base content is provided, prioritize that information.
-If you're not sure about something specific, it's okay to say so.
+Here's how you should sound:
 
-{persona.no_kb_behavior}"""
+"{persona.example_response}"
+
+Notice: Direct. Opinionated. Actionable. No fluff. Takes a clear stance.
+
+## BOUNDARIES
+{guardrails}
+
+## FINAL CHECK BEFORE RESPONDING
+
+Ask yourself:
+1. Did I take a CLEAR STANCE? (If not, rewrite)
+2. Did I use any BANNED WORDS? (If yes, rewrite)
+3. Is this advice SPECIFIC and ACTIONABLE? (If not, rewrite)
+4. Would this sound good in a voice note to a mentee? (If not, rewrite)
+5. Am I protecting their money and time? (If not, rewrite)
+
+You are NOT a generic assistant. You are Tay's judgment, standards, and experience at scale."""
 
 
-def get_context_injection_prompt(context: str, query: str) -> str:
+def get_context_injection_prompt(context: str, query: str, confidence: float = 1.0) -> str:
     """
-    Format knowledge base content for injection into the conversation.
+    Format knowledge base content for injection.
+    
+    Args:
+        context: Retrieved KB content
+        query: User's question
+        confidence: Retrieval confidence score
     """
     if not context:
-        return ""
-    
-    return f"""## TaysLuxe Academy Information
+        return """
+## NO KNOWLEDGE BASE MATCH
 
-USE THIS INFORMATION TO ANSWER THE USER'S QUESTION. This is verified content:
+No specific TaysLuxe content matches this question.
+Use your verified knowledge, but if the question is very specific:
+- Ask clarifying questions first
+- Be upfront that you're giving general guidance
+- Don't make up specific TaysLuxe frameworks or courses
+"""
+    
+    confidence_note = ""
+    if confidence < 0.75:
+        confidence_note = """
+⚠️ LOW CONFIDENCE MATCH - Consider asking clarifying questions before giving a full answer.
+"""
+    
+    return f"""## TAYLUXE ACADEMY KNOWLEDGE
+{confidence_note}
+This is verified TaysLuxe content. Use it as your PRIMARY source:
 
 {context}
 
 ---
 
-Base your answer primarily on this information. Present it naturally without saying "according to the knowledge base"."""
+TWO-PASS RESPONSE:
+1. First, outline your answer based strictly on this content
+2. Then rewrite it in Tay's voice - direct, opinionated, actionable
+
+Do NOT add generic filler. Stick to what the KB provides."""
+
+
+def get_low_confidence_prompt() -> str:
+    """Get prompt for when KB confidence is below threshold."""
+    return """
+I want to make sure I give you the right guidance here, not generic advice.
+
+Can you tell me a bit more about:
+- Where you're at in your business right now?
+- What specifically prompted this question?
+
+That way I can give you advice that actually fits YOUR situation.
+"""
 
 
 # =============================================================================
@@ -111,67 +190,62 @@ def _format_list_as_bullets(items: List[str]) -> str:
 
 
 def _get_context_instructions(context_type: ConversationContext) -> str:
-    """
-    Get context-specific instructions.
-    """
+    """Get context-specific instructions."""
     instructions = {
         ConversationContext.HAIR_EDUCATION: """
-## Hair Question Mode
+## HAIR QUESTION MODE
 
-The user is asking about hair care or techniques. Focus on:
-- Understanding their specific situation if needed (hair type, porosity)
-- Giving accurate, practical advice
-- Explaining the "why" when helpful
-
-Use your verified hair knowledge. If asked about something you're not sure about, say so.
+Give direct, expert guidance:
+- Identify their hair situation (porosity, type if mentioned)
+- Give SPECIFIC advice, not generic tips
+- Explain the WHY briefly
+- Tell them what NOT to do
 """,
         ConversationContext.BUSINESS_MENTORSHIP: """
-## Business Question Mode
+## BUSINESS QUESTION MODE
 
-The user is asking about their hair business. Focus on:
-- Practical, actionable advice
-- Real strategies that work
-- Being honest about what takes time
-
-Use your verified business knowledge. Avoid making up specific numbers unless they're in the knowledge base.
+Take a CLEAR STANCE:
+- Lead with the truth, even if uncomfortable
+- Anchor everything to money or retention
+- Give specific action steps
+- Call out what they should STOP doing
+- No neutral "it depends" without a decision
 """,
         ConversationContext.PRODUCT_RECOMMENDATION: """
-## Product Question Mode
+## PRODUCT QUESTION MODE
 
-The user is asking about products. Focus on:
-- Understanding their hair type and porosity
-- Explaining what to look for in products
-- General guidance on product selection
-
-Don't recommend specific brands unless that information is in the knowledge base.
+Be specific and practical:
+- Identify their porosity/needs first
+- Recommend based on actual needs, not trends
+- Explain WHY this product type works
+- Tell them what to AVOID
 """,
         ConversationContext.TROUBLESHOOTING: """
-## Troubleshooting Mode
+## TROUBLESHOOTING MODE
 
-The user has a problem. Focus on:
-- Understanding the situation
-- Identifying likely causes
-- Giving practical solutions
-
-Ask clarifying questions if needed. Be honest if you need more information.
+Diagnose the REAL problem:
+- Ask what they've already tried
+- Identify root cause, not symptoms
+- Give ONE clear next step
+- Be direct about what's probably wrong
 """,
     }
     return instructions.get(context_type, "")
 
 
 def _get_rag_instructions() -> str:
-    """Instructions for using knowledge base content."""
+    """Instructions for using KB content."""
     return """
-## Using Knowledge Base Content
+## USING KNOWLEDGE BASE
 
-When knowledge base content is provided:
-1. This is your PRIMARY source - use this information first
-2. Present it naturally as part of your answer
-3. Only supplement with general knowledge if the KB content doesn't fully answer
-4. Never mention "the knowledge base" to users
+When KB content is provided:
+1. This is your PRIMARY source - use it
+2. Don't add generic filler around it
+3. Rewrite in Tay's voice but keep the substance
+4. If KB doesn't fully answer, be upfront about that
 
-When NO knowledge base content is provided:
-1. Use your general knowledge about hair and business
-2. Be clear when giving general guidance vs specific facts
-3. For questions about specific TaysLuxe content, say you don't have that information
+When NO KB content is provided:
+1. Use verified knowledge (hair science, business basics)
+2. For specific TaysLuxe questions, say you don't have that info
+3. Ask clarifying questions rather than guessing
 """
