@@ -38,18 +38,18 @@ export default function Dashboard() {
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:h-16 sm:items-center sm:justify-between py-3 sm:py-0 gap-3 sm:gap-0">
+
             
-            {/* Logo */}
-            <Link href="/" className="flex items-center justify-center sm:justify-start">
-              <Image
-                src="/logo.png"
-                alt="Tays Luxe Academy"
-                width={120}
-                height={48}
-                className="h-auto w-auto"
-                priority
-              />
-            </Link>
+          <Link href="/" className="flex items-center">
+          <Image
+            src="/logo.png"
+            alt="Tays Luxe Academy"
+            width={200}
+            height={100}
+            className="h-12 w-auto sm:h-12"
+            priority
+          />
+          </Link>
 
             {/* User Info + Logout */}
             <div className="flex items-center justify-between sm:justify-end gap-3">
