@@ -1,8 +1,8 @@
 """
 Prompt Generation for TayAI
 
-Functions that build the actual prompts sent to the OpenAI API.
-This is where the persona, context, and RAG data come together.
+Builds prompts for the OpenAI API. TayAI behaves like ChatGPT
+but specialized for hair business owners.
 """
 from typing import Dict, List, Optional
 
@@ -17,116 +17,88 @@ def get_system_prompt(
     user_tier: Optional[str] = None
 ) -> str:
     """
-    Generate the main system prompt for TayAI.
-    
-    Args:
-        persona: The persona configuration (defaults to DEFAULT_PERSONA)
-        context_type: The type of conversation context detected
-        include_rag_instructions: Whether to include RAG-specific instructions
-        user_tier: User's membership tier
-    
-    Returns:
-        Complete system prompt string ready for OpenAI API
+    Generate the system prompt for TayAI.
     """
     persona = persona or DEFAULT_PERSONA
     
-    # Build formatted sections
-    job = _format_list_as_bullets(persona.core_role["your_job"])
-    approach = _format_list_as_bullets(persona.core_role["approach"])
+    # Build sections
+    behavior = _format_list_as_bullets(persona.core_behavior)
     expertise = _format_dict_as_bullets(persona.expertise_areas)
-    style = _format_dict_as_bullets(persona.communication_style)
-    guidelines = _format_list_as_bullets(persona.response_guidelines)
-    avoid_list = _format_list_as_bullets(persona.avoid)
+    style = _format_dict_as_bullets(persona.response_style)
+    accuracy = _format_list_as_bullets(persona.accuracy_rules)
+    hair_facts = _format_list_as_bullets(persona.verified_hair_knowledge)
+    business_facts = _format_list_as_bullets(persona.verified_business_knowledge)
+    avoid = _format_list_as_bullets(persona.avoid)
     guardrails = _format_list_as_bullets(persona.guardrails)
-    accuracy = _format_list_as_bullets(persona.accuracy_guidelines)
-    formatting = _format_dict_as_bullets(persona.response_formatting)
     
-    # Context-specific instructions
+    # Context-specific section
     context_section = _get_context_instructions(context_type)
     
-    # Tier-based instructions
-    tier_section = _get_tier_instructions(user_tier) if user_tier else ""
-    
-    # RAG instructions
+    # RAG section
     rag_section = _get_rag_instructions() if include_rag_instructions else ""
     
     return f"""# You are {persona.name}
 
 {persona.identity}
 
-## Your Role
-
-**What you do:**
-{job}
-
-**Your approach:**
-{approach}
+## How You Behave
+{behavior}
 
 ## Your Expertise
 {expertise}
 
-## How You Communicate
+## Response Style
 {style}
 
-## Response Guidelines
-{guidelines}
-
-## What to Avoid
-{avoid_list}
-
-## Important Knowledge (Always Accurate)
+## CRITICAL: Accuracy Rules
 {accuracy}
 
-## Response Formatting
-{formatting}
+## Verified Hair Knowledge (You Can State These as Facts)
+{hair_facts}
+
+## Verified Business Knowledge (You Can State These as Facts)
+{business_facts}
+
+## What to Avoid
+{avoid}
 
 ## Boundaries
 {guardrails}
-{tier_section}
 {context_section}
 {rag_section}
-## Remember
+## Important
 
-You're here to help hair business owners and stylists succeed. Be helpful, be clear, be practical. 
-Give them advice they can actually use. If knowledge base information is provided, prioritize that content in your response."""
+You are like ChatGPT, but specialized for hair professionals. Be helpful, accurate, and honest.
+If knowledge base content is provided, prioritize that information.
+If you're not sure about something specific, it's okay to say so.
+
+{persona.no_kb_behavior}"""
 
 
 def get_context_injection_prompt(context: str, query: str) -> str:
     """
-    Create the context injection message for RAG.
-    
-    This formats retrieved knowledge base content for insertion into
-    the conversation, so TayAI can use it naturally.
-    
-    Args:
-        context: Retrieved context from knowledge base
-        query: The user's original query
-    
-    Returns:
-        Formatted context injection prompt
+    Format knowledge base content for injection into the conversation.
     """
     if not context:
         return ""
     
-    return f"""## TaysLuxe Academy Knowledge
+    return f"""## TaysLuxe Academy Information
 
-Use the following information from TaysLuxe Academy to answer the user's question. 
-This is verified content - prioritize it in your response:
+USE THIS INFORMATION TO ANSWER THE USER'S QUESTION. This is verified content:
 
 {context}
 
 ---
 
-Present this information naturally as part of your answer. Do not mention "the knowledge base" - 
-just share the information as helpful advice."""
+Base your answer primarily on this information. Present it naturally without saying "according to the knowledge base"."""
 
 
 # =============================================================================
-# Private Helper Functions
+# Helper Functions
 # =============================================================================
 
 def _format_dict_as_bullets(items: Dict[str, str]) -> str:
-    """Format a dictionary as a bulleted list with bold keys."""
+    """Format dictionary as bullet list."""
     return "\n".join(
         f"- **{key.replace('_', ' ').title()}**: {value}"
         for key, value in items.items()
@@ -134,110 +106,72 @@ def _format_dict_as_bullets(items: Dict[str, str]) -> str:
 
 
 def _format_list_as_bullets(items: List[str]) -> str:
-    """Format a list as bullet points."""
+    """Format list as bullet points."""
     return "\n".join(f"- {item}" for item in items)
 
 
 def _get_context_instructions(context_type: ConversationContext) -> str:
     """
-    Get context-specific instructions based on conversation type.
+    Get context-specific instructions.
     """
     instructions = {
         ConversationContext.HAIR_EDUCATION: """
-## Hair Education Mode
+## Hair Question Mode
 
-The user is asking about hair care, techniques, or products. Focus on:
-- Understanding their hair type and porosity if relevant
-- Providing accurate, science-based information
-- Giving practical step-by-step guidance when appropriate
-- Explaining the "why" behind recommendations
+The user is asking about hair care or techniques. Focus on:
+- Understanding their specific situation if needed (hair type, porosity)
+- Giving accurate, practical advice
+- Explaining the "why" when helpful
 
-Key knowledge to apply:
-- Low porosity: LCO method, lightweight products, heat helps open cuticles
-- High porosity: LOC method, heavier products, sealing is important
-- Protein vs moisture: Brittle = needs moisture, Mushy/gummy = needs protein
-- Type 4 hair: Never brush dry, always detangle wet with conditioner
+Use your verified hair knowledge. If asked about something you're not sure about, say so.
 """,
         ConversationContext.BUSINESS_MENTORSHIP: """
-## Business Mode
+## Business Question Mode
 
 The user is asking about their hair business. Focus on:
-- Practical, actionable business advice
-- Real numbers and strategies when possible
-- Helping them make money and grow sustainably
+- Practical, actionable advice
+- Real strategies that work
+- Being honest about what takes time
 
-Key business knowledge:
-- Pricing: Time + Products + Overhead + Profit (aim for 30%+ margin)
-- Building clientele takes 6-12 months - that's normal
-- Separate business and personal finances from day one
-- Set aside 25-30% for taxes
-- Raise prices when booked 4+ weeks out
-- Client retention beats constantly chasing new clients
+Use your verified business knowledge. Avoid making up specific numbers unless they're in the knowledge base.
 """,
         ConversationContext.PRODUCT_RECOMMENDATION: """
-## Product Recommendation Mode
+## Product Question Mode
 
 The user is asking about products. Focus on:
-- Understanding their hair type and porosity first
+- Understanding their hair type and porosity
 - Explaining what to look for in products
-- Giving practical recommendations
+- General guidance on product selection
 
-Key product knowledge:
-- Low porosity: Water-based products, lightweight, avoid heavy butters
-- High porosity: Heavier creams/butters, protein helps
-- First ingredient matters: Water first = moisturizing, Oil first = sealing
+Don't recommend specific brands unless that information is in the knowledge base.
 """,
         ConversationContext.TROUBLESHOOTING: """
 ## Troubleshooting Mode
 
-The user has a problem to solve. Focus on:
-- Understanding the full situation
-- Identifying the root cause
-- Providing clear solutions
+The user has a problem. Focus on:
+- Understanding the situation
+- Identifying likely causes
+- Giving practical solutions
 
-For hair problems: Check porosity, protein-moisture balance, routine issues
-For business problems: Check pricing, boundaries, marketing, operations
+Ask clarifying questions if needed. Be honest if you need more information.
 """,
     }
     return instructions.get(context_type, "")
 
 
-def _get_tier_instructions(tier: Optional[str]) -> str:
-    """
-    Get tier-specific instructions based on user membership level.
-    """
-    if not tier:
-        return ""
-    
-    tier_lower = tier.lower()
-    
-    instructions = {
-        "basic": """
-## Member Tier: Basic (Trial)
-
-This user is on a trial. Provide helpful, valuable answers that demonstrate 
-the quality of TaysLuxe Academy. Be welcoming and supportive.
-""",
-        "vip": """
-## Member Tier: Elite (VIP)
-
-This user has full access. Provide comprehensive, detailed guidance. 
-They've invested in their growth - give them your best insights.
-""",
-    }
-    
-    return instructions.get(tier_lower, "")
-
-
 def _get_rag_instructions() -> str:
-    """Get instructions for how to use RAG-retrieved context."""
+    """Instructions for using knowledge base content."""
     return """
 ## Using Knowledge Base Content
 
 When knowledge base content is provided:
-1. **Prioritize this information** - it's verified TaysLuxe Academy content
-2. Integrate the content naturally into your response
-3. If the content doesn't fully answer the question, supplement with your expertise
-4. Never say "according to the knowledge base" - just share the information naturally
-5. Present TaysLuxe Academy content as authoritative guidance
+1. This is your PRIMARY source - use this information first
+2. Present it naturally as part of your answer
+3. Only supplement with general knowledge if the KB content doesn't fully answer
+4. Never mention "the knowledge base" to users
+
+When NO knowledge base content is provided:
+1. Use your general knowledge about hair and business
+2. Be clear when giving general guidance vs specific facts
+3. For questions about specific TaysLuxe content, say you don't have that information
 """
