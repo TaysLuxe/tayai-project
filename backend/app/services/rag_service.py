@@ -110,20 +110,20 @@ class RAGService:
             # Using cosine distance (1 - cosine similarity)
             # Lower distance = higher similarity
             # Convert embedding list to PostgreSQL vector format string
+            # Note: Using vector literal format directly in SQL (safe - embedding is generated, not user input)
             embedding_str = "[" + ",".join(map(str, embedding)) + "]"
             
-            query_sql = """
+            query_sql = f"""
                 SELECT 
                     id,
                     content,
                     meta_data,
-                    1 - (embedding <=> :query_vector::vector) as similarity
+                    1 - (embedding <=> '{embedding_str}'::vector) as similarity
                 FROM vector_embeddings
-                WHERE 1 - (embedding <=> :query_vector::vector) >= :threshold
+                WHERE 1 - (embedding <=> '{embedding_str}'::vector) >= :threshold
             """
             
             params = {
-                "query_vector": embedding_str,
                 "threshold": score_threshold
             }
             
@@ -189,6 +189,12 @@ class RAGService:
             
         except Exception as e:
             logger.error(f"Error retrieving context: {e}")
+            # Rollback transaction if it's in a failed state
+            if self.db:
+                try:
+                    await self.db.rollback()
+                except Exception as rollback_error:
+                    logger.error(f"Error during rollback: {rollback_error}")
             return ContextResult("", [], 0, 0.0) if include_sources else ""
     
     def _format_context(self, result: RetrievalResult) -> str:
@@ -447,20 +453,20 @@ class RAGService:
             return []
         
         embedding = await self._generate_embedding(query)
+        # Convert embedding list to PostgreSQL vector format string
+        # Note: Using vector literal format directly in SQL (safe - embedding is generated, not user input)
         embedding_str = "[" + ",".join(map(str, embedding)) + "]"
         
-        query_sql = """
+        query_sql = f"""
             SELECT 
                 id,
-                metadata,
-                1 - (embedding <=> :query_vector::vector) as similarity
+                meta_data,
+                1 - (embedding <=> '{embedding_str}'::vector) as similarity
             FROM vector_embeddings
-            WHERE 1 - (embedding <=> :query_vector::vector) > 0
+            WHERE 1 - (embedding <=> '{embedding_str}'::vector) > 0
         """
         
-        params = {
-            "query_vector": embedding_str
-        }
+        params = {}
         
         if namespace:
             query_sql += " AND namespace = :namespace"
