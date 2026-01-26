@@ -25,13 +25,18 @@ from app.core.constants import (
     DEFAULT_TOP_K,
     DEFAULT_SCORE_THRESHOLD,
     CHAT_HISTORY_DEFAULT_LIMIT,
+    BANNED_WORDS,
+    CONTEXTUAL_WORDS,
+    RAG_MIN_CONFIDENCE,
 )
 from app.core.prompts import (
     get_system_prompt,
     get_context_injection_prompt,
     detect_conversation_context,
     ConversationContext,
-    FALLBACK_RESPONSES
+    FALLBACK_RESPONSES,
+    detect_recipe,
+    get_recipe_prompt,
 )
 from app.db.models import ChatMessage, MissingKBItem, QuestionLog
 from app.services.rag_service import RAGService, ContextResult
@@ -49,6 +54,7 @@ class ChatService:
     MAX_HISTORY = MAX_CONVERSATION_HISTORY
     TEMPERATURE = DEFAULT_TEMPERATURE
     MAX_TOKENS = DEFAULT_MAX_TOKENS
+    MAX_REGENERATIONS = 2  # Max times to regenerate for banned words
     
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -92,27 +98,30 @@ class ChatService:
                 include_sources=True
             )
             
-            # Extract context string
-            context = (
-                context_result.context 
-                if isinstance(context_result, ContextResult) 
-                else context_result
-            )
+            # Extract context string and confidence score
+            context = ""
+            kb_confidence = 0.0
             
-            # Build messages and call API
+            if isinstance(context_result, ContextResult):
+                context = context_result.context
+                kb_confidence = context_result.average_score if context_result.total_matches > 0 else 0.0
+            elif context_result:
+                context = context_result
+                kb_confidence = 0.5  # Default if we can't determine
+            
+            logger.info(f"KB confidence: {kb_confidence:.2f} (threshold: {RAG_MIN_CONFIDENCE})")
+            
+            # Build messages with confidence info
             messages = self._build_messages(
-                message, context, conversation_history, context_type, user_tier
+                message, context, conversation_history, context_type, user_tier, kb_confidence
             )
             
-            response = await get_openai_client().chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                messages=messages,
-                temperature=self.TEMPERATURE,
-                max_tokens=self.MAX_TOKENS
-            )
+            # Generate response (with banned word checking)
+            ai_response, tokens_used = await self._generate_response_with_ban_check(messages)
             
-            ai_response = response.choices[0].message.content
-            tokens_used = response.usage.total_tokens
+            # Log if low confidence (potential missing KB item)
+            if kb_confidence < RAG_MIN_CONFIDENCE:
+                logger.info(f"Low confidence ({kb_confidence:.2f}) - may need KB content for: {message[:50]}...")
             
             # Save to database
             chat_message = ChatMessage(
@@ -168,27 +177,105 @@ class ChatService:
                 message_id=None
             )
     
+    async def _generate_response_with_ban_check(self, messages: List[Dict]) -> tuple:
+        """
+        Generate response and check for banned words.
+        Regenerates up to MAX_REGENERATIONS times if banned words found.
+        """
+        total_tokens = 0
+        
+        for attempt in range(self.MAX_REGENERATIONS + 1):
+            response = await get_openai_client().chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=messages,
+                temperature=self.TEMPERATURE,
+                max_tokens=self.MAX_TOKENS
+            )
+            
+            ai_response = response.choices[0].message.content
+            total_tokens += response.usage.total_tokens
+            
+            # Check for banned words
+            banned_found = self._check_banned_words(ai_response)
+            
+            if not banned_found:
+                return ai_response, total_tokens
+            
+            if attempt < self.MAX_REGENERATIONS:
+                logger.warning(f"Banned words found: {banned_found}. Regenerating (attempt {attempt + 1})...")
+                # Add instruction to avoid banned words
+                messages.append({
+                    "role": "system",
+                    "content": f"Your previous response contained banned words: {', '.join(banned_found)}. "
+                               f"Rewrite WITHOUT using these words. Be direct and real instead."
+                })
+            else:
+                logger.warning(f"Max regenerations reached. Returning response with banned words: {banned_found}")
+        
+        return ai_response, total_tokens
+    
+    def _check_banned_words(self, text: str) -> List[str]:
+        """
+        Check text for banned words.
+        Returns list of banned words found.
+        """
+        text_lower = text.lower()
+        found = []
+        
+        for word in BANNED_WORDS:
+            if word.lower() in text_lower:
+                # Check contextual exceptions
+                if word.lower() in CONTEXTUAL_WORDS:
+                    # Check if any allowed context word is present
+                    allowed_contexts = CONTEXTUAL_WORDS[word.lower()]
+                    if any(ctx in text_lower for ctx in allowed_contexts):
+                        continue  # Allowed in this context
+                found.append(word)
+        
+        return found
+    
     def _build_messages(
         self,
         user_message: str,
         context: str,
         history: Optional[List[Dict]],
         context_type: ConversationContext,
-        user_tier: Optional[str] = None
+        user_tier: Optional[str] = None,
+        kb_confidence: float = 1.0
     ) -> List[Dict]:
         """Build the message array for OpenAI API."""
         messages = [
             {"role": "system", "content": get_system_prompt(
                 context_type=context_type,
-                user_tier=user_tier
+                user_tier=user_tier,
+                kb_confidence=kb_confidence
             )}
         ]
         
-        # Add RAG context
+        # Detect and add recipe if applicable
+        recipe = detect_recipe(user_message)
+        if recipe:
+            logger.info(f"Recipe detected: {recipe.name}")
+            messages.append({
+                "role": "system",
+                "content": get_recipe_prompt(recipe)
+            })
+        
+        # Add RAG context with confidence info
         if context:
             messages.append({
                 "role": "system",
-                "content": get_context_injection_prompt(context, user_message)
+                "content": get_context_injection_prompt(context, user_message, kb_confidence)
+            })
+        elif kb_confidence < RAG_MIN_CONFIDENCE:
+            # No context and low confidence - add clarifying instruction
+            messages.append({
+                "role": "system",
+                "content": (
+                    "NO KNOWLEDGE BASE MATCH for this question. "
+                    "Consider asking clarifying questions before giving a full answer. "
+                    "Don't give generic advice - be specific or ask what they need."
+                )
             })
         
         # Add conversation history

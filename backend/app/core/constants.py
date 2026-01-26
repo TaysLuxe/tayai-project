@@ -27,16 +27,47 @@ MIN_MESSAGE_LENGTH = 1
 MAX_CONVERSATION_HISTORY = 10
 
 # OpenAI API defaults
-DEFAULT_TEMPERATURE = 0.7
+DEFAULT_TEMPERATURE = 0.3  # Lower for more factual, consistent responses
 DEFAULT_MAX_TOKENS = 1000
 DEFAULT_TOP_K = 5
 DEFAULT_SCORE_THRESHOLD = 0.7
 
 # RAG Configuration
 RAG_TOP_K = 5
-RAG_SCORE_THRESHOLD = 0.7
+RAG_SCORE_THRESHOLD = 0.75  # Higher threshold for confident answers
+RAG_MIN_CONFIDENCE = 0.75  # Below this, ask clarifying questions
 RAG_CHUNK_SIZE = 500
 RAG_CHUNK_OVERLAP = 50
+
+# Banned Words - Regenerate if these appear (unless in specific context)
+BANNED_WORDS = [
+    "flawless",
+    "effortless", 
+    "transformation",
+    "transform",
+    "seamless",
+    "elevate",
+    "game-changer",
+    "next level",
+    "unlock",
+    "manifest",
+    "aligned",
+    "glow up",
+    "boss up",
+    "secure the bag",
+    "soft life",
+    "high vibe",
+    "show-stopping",
+    "turn heads",
+    "stepping into your era",
+    "experience the magic",
+]
+
+# Words allowed only in specific contexts
+CONTEXTUAL_WORDS = {
+    "luxury": ["pricing", "price", "charge", "cost", "premium", "positioning"],
+    "magic": ["no magic", "not magic", "isn't magic"],
+}
 
 # =============================================================================
 # Pagination Defaults
