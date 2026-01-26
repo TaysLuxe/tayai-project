@@ -97,7 +97,7 @@ export default function ChatWidget() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <h3 className="text-lg font-medium text-white mb-1">Start a conversation</h3>
+            <h3 className="text-md font-medium text-white mb-1">Start a conversation</h3>
             <p className="text-sm text-gray-500 max-w-sm">
               Ask TayAI anything about hair business, marketing, clients, or growing your brand.
             </p>
