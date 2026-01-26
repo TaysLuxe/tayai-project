@@ -45,12 +45,54 @@ The Railway dashboard doesn't have a shell/terminal interface. Use the Railway C
    ```
    (Select your project and service when prompted)
 
-5. Run the seed script:
+5. Run the seed script using one of these methods:
+
+   **Method A: Direct Python (if file is found):**
    ```bash
    railway run python seed_users.py
    ```
 
+   **Method B: Using the wrapper script (more reliable):**
+   ```bash
+   railway run bash seed_railway.sh
+   ```
+
+   **Method C: Using the Python runner (most reliable):**
+   ```bash
+   railway run python run_seed.py
+   ```
+
+   **Method D: Try python3 instead:**
+   ```bash
+   railway run python3 seed_users.py
+   ```
+
    The script will output which users were created or skipped. You can also check the "Deployments" tab in Railway dashboard to see the execution logs.
+
+### Troubleshooting
+
+If you get "No such file or directory" error:
+
+1. **Check your current directory:**
+   ```bash
+   railway run pwd
+   railway run ls -la
+   ```
+
+2. **Verify the file exists:**
+   ```bash
+   railway run ls -la seed_users.py
+   ```
+
+3. **Try the wrapper script instead:**
+   ```bash
+   railway run bash seed_railway.sh
+   ```
+
+4. **Or use the Python runner:**
+   ```bash
+   railway run python run_seed.py
+   ```
 
 ### Option 2: One-time Setup Script (Alternative)
 
