@@ -61,7 +61,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div>
-              <p className="text-base font-medium text-white">{user?.username}</p>
+              <p className="text-base font-semibold text-white">{user?.username}</p>
               <p className="text-sm text-gray-500 capitalize">{user?.tier} Tier</p>
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function Dashboard() {
 
             {/* Title & Status */}
             <div>
-              <h1 className="text-md font-semibold text-white">Chat with TayAI</h1>
+              <h1 className="text-md font-medium text-white">Chat with TayAI</h1>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                 <span className="text-sm text-gray-500">Online</span>
