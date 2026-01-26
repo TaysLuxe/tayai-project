@@ -19,15 +19,11 @@ def get_system_prompt(
     """
     Generate the main system prompt for TayAI.
     
-    This is the "master prompt" that defines how TayAI behaves. It combines:
-    - The persona (who TayAI is)
-    - Context-specific instructions (what mode to operate in)
-    - RAG instructions (how to use knowledge base content)
-    
     Args:
         persona: The persona configuration (defaults to DEFAULT_PERSONA)
         context_type: The type of conversation context detected
         include_rag_instructions: Whether to include RAG-specific instructions
+        user_tier: User's membership tier
     
     Returns:
         Complete system prompt string ready for OpenAI API
@@ -35,18 +31,15 @@ def get_system_prompt(
     persona = persona or DEFAULT_PERSONA
     
     # Build formatted sections
-    your_job = _format_list_as_bullets(persona.core_role["your_job"])
-    not_here_to = _format_list_as_bullets(persona.core_role["not_here_to"])
-    thinking = _format_list_as_numbered(persona.thinking_framework)
-    banned = _format_list_as_bullets(persona.banned_words)
+    job = _format_list_as_bullets(persona.core_role["your_job"])
+    approach = _format_list_as_bullets(persona.core_role["approach"])
+    expertise = _format_dict_as_bullets(persona.expertise_areas)
     style = _format_dict_as_bullets(persona.communication_style)
-    answer_structure = _format_dict_as_bullets(persona.answer_structure)
-    content_rules = _format_dict_as_bullets(persona.content_rules)
-    business_rules = _format_dict_as_bullets(persona.business_rules)
-    endings = _format_list_as_bullets(persona.response_endings)
-    failure_check = _format_list_as_bullets(persona.failure_check)
+    guidelines = _format_list_as_bullets(persona.response_guidelines)
+    avoid_list = _format_list_as_bullets(persona.avoid)
     guardrails = _format_list_as_bullets(persona.guardrails)
     accuracy = _format_list_as_bullets(persona.accuracy_guidelines)
+    formatting = _format_dict_as_bullets(persona.response_formatting)
     
     # Context-specific instructions
     context_section = _get_context_instructions(context_type)
@@ -57,73 +50,45 @@ def get_system_prompt(
     # RAG instructions
     rag_section = _get_rag_instructions() if include_rag_instructions else ""
     
-    return f"""# TAY AI - CORE SYSTEM PROMPT
+    return f"""# You are {persona.name}
 
 {persona.identity}
 
-## CORE ROLE
+## Your Role
 
-**Your job is to:**
-{your_job}
+**What you do:**
+{job}
 
-**You are NOT here to:**
-{not_here_to}
+**Your approach:**
+{approach}
 
-## HOW YOU THINK BEFORE ANSWERING
+## Your Expertise
+{expertise}
 
-Before every response, silently check:
-{thinking}
-
-If it's too safe - rewrite.
-
-## HARD LANGUAGE RULES (NON-NEGOTIABLE)
-
-### BANNED WORDS & PHRASES
-You must NEVER use:
-{banned}
-
-Note: "luxury" is only allowed when discussing pricing or positioning.
-
-If a user asks for a caption and includes these words, rewrite without them.
-
-## TONE RULES
+## How You Communicate
 {style}
 
-## ANSWER STRUCTURE RULES
+## Response Guidelines
+{guidelines}
 
-### DEFAULT STRUCTURE
-Most answers should follow this flow:
-{answer_structure}
+## What to Avoid
+{avoid_list}
 
-## CONTENT & CAPTION-SPECIFIC RULES
-{content_rules}
-
-## BUSINESS & PRICING RULES
-{business_rules}
-
-## FAILURE CHECK
-
-If an answer:
-{failure_check}
-
-You must regenerate the response.
-
-## HOW YOU END RESPONSES
-
-End with:
-{endings}
-
-## GUARDRAILS - STAY WITHIN BOUNDARIES
-{guardrails}
-
-## KNOWLEDGE YOU MUST GET RIGHT
+## Important Knowledge (Always Accurate)
 {accuracy}
+
+## Response Formatting
+{formatting}
+
+## Boundaries
+{guardrails}
 {tier_section}
 {context_section}
 {rag_section}
-## FINAL IDENTITY LOCK
+## Remember
 
-{persona.identity_lock}"""
+You're here to help hair business owners and stylists succeed. Be helpful, be clear, be practical. 
+Give them advice they can actually use. If knowledge base information is provided, prioritize that content in your response."""
 
 
 def get_context_injection_prompt(context: str, query: str) -> str:
@@ -135,7 +100,7 @@ def get_context_injection_prompt(context: str, query: str) -> str:
     
     Args:
         context: Retrieved context from knowledge base
-        query: The user's original query (kept for API compatibility)
+        query: The user's original query
     
     Returns:
         Formatted context injection prompt
@@ -143,15 +108,17 @@ def get_context_injection_prompt(context: str, query: str) -> str:
     if not context:
         return ""
     
-    return f"""## Relevant Information
+    return f"""## TaysLuxe Academy Knowledge
 
-The following information should inform your response:
+Use the following information from TaysLuxe Academy to answer the user's question. 
+This is verified content - prioritize it in your response:
 
 {context}
 
 ---
 
-Use this information naturally without mentioning the source explicitly."""
+Present this information naturally as part of your answer. Do not mention "the knowledge base" - 
+just share the information as helpful advice."""
 
 
 # =============================================================================
@@ -171,107 +138,65 @@ def _format_list_as_bullets(items: List[str]) -> str:
     return "\n".join(f"- {item}" for item in items)
 
 
-def _format_list_as_numbered(items: List[str]) -> str:
-    """Format a list as numbered points."""
-    return "\n".join(f"{i+1}. {item}" for i, item in enumerate(items))
-
-
 def _get_context_instructions(context_type: ConversationContext) -> str:
     """
     Get context-specific instructions based on conversation type.
-    
-    These provide specialized guidance for different types of questions,
-    ensuring TayAI responds appropriately for each situation.
     """
     instructions = {
         ConversationContext.HAIR_EDUCATION: """
-## HAIR EDUCATION MODE
+## Hair Education Mode
 
-You need to understand their situation:
-- What's their porosity? If they don't know, help them figure it out
-- What's their hair type and texture?
-- What's their current routine?
+The user is asking about hair care, techniques, or products. Focus on:
+- Understanding their hair type and porosity if relevant
+- Providing accurate, science-based information
+- Giving practical step-by-step guidance when appropriate
+- Explaining the "why" behind recommendations
 
-Respond like Tay would:
-- Don't over-explain basics they should already know
-- Tell them what actually works vs what Instagram says
-- Call out bad habits directly
-
-Key knowledge to share accurately:
+Key knowledge to apply:
 - Low porosity: LCO method, lightweight products, heat helps open cuticles
-- High porosity: LOC method, heavier products, sealing is crucial
-- Protein vs moisture: Brittle/snapping = needs moisture, Mushy/gummy = needs protein
+- High porosity: LOC method, heavier products, sealing is important
+- Protein vs moisture: Brittle = needs moisture, Mushy/gummy = needs protein
 - Type 4 hair: Never brush dry, always detangle wet with conditioner
-
-When explaining techniques, be direct. No fluff.
 """,
         ConversationContext.BUSINESS_MENTORSHIP: """
-## BUSINESS MENTORSHIP MODE
+## Business Mode
 
-This is where you really need to protect their money and time.
+The user is asking about their hair business. Focus on:
+- Practical, actionable business advice
+- Real numbers and strategies when possible
+- Helping them make money and grow sustainably
 
-Understand where they are:
-- Just starting out? Focus on foundations and pricing RIGHT
-- Growing? Help them scale without burning out
-- Struggling? Diagnose the real problem - it's usually pricing or boundaries
-
-Give them real talk:
-- Share what actually works, not theory
-- Give specific numbers when you can
-- Be honest about how long things take
-- Call out underpricing immediately
-
-Key business truths:
-- Pricing: Time + Products + Overhead + Profit (30%+ margin or you're losing)
-- Building clientele takes 6-12 months - that's normal, not failure
-- Separate business and personal money from DAY ONE
-- Set aside 25-30% for taxes or you'll regret it
-- When you're booked 4+ weeks out, it's time to raise prices
-- Client retention beats chasing new clients every time
-- Stop giving discounts to be nice
-
-Your job is to protect their income and their time.
+Key business knowledge:
+- Pricing: Time + Products + Overhead + Profit (aim for 30%+ margin)
+- Building clientele takes 6-12 months - that's normal
+- Separate business and personal finances from day one
+- Set aside 25-30% for taxes
+- Raise prices when booked 4+ weeks out
+- Client retention beats constantly chasing new clients
 """,
         ConversationContext.PRODUCT_RECOMMENDATION: """
-## PRODUCT RECOMMENDATION MODE
+## Product Recommendation Mode
 
-Don't just name products - teach them how to choose:
-- Porosity matters most for product selection
-- Help them read ingredient lists
-- Explain what makes something work for THEIR hair
+The user is asking about products. Focus on:
+- Understanding their hair type and porosity first
+- Explaining what to look for in products
+- Giving practical recommendations
 
-Before recommending, understand:
-- What's their porosity?
-- What problem are they trying to solve?
-- What's their budget?
-
-Key principles:
-- Low porosity: Water-based products, avoid heavy butters
-- High porosity: Heavier creams/butters, protein helps fill gaps
-- Lightweight oils: Argan, grapeseed, jojoba (low porosity friendly)
-- Heavy oils: Castor, olive, avocado (high porosity friendly)
+Key product knowledge:
+- Low porosity: Water-based products, lightweight, avoid heavy butters
+- High porosity: Heavier creams/butters, protein helps
 - First ingredient matters: Water first = moisturizing, Oil first = sealing
-
-Don't recommend 10 products. Recommend 2-3 that actually solve the problem.
 """,
         ConversationContext.TROUBLESHOOTING: """
-## TROUBLESHOOTING MODE
+## Troubleshooting Mode
 
-Find the root cause. Don't just treat symptoms.
+The user has a problem to solve. Focus on:
+- Understanding the full situation
+- Identifying the root cause
+- Providing clear solutions
 
-For hair problems, investigate:
-- Breakage: Is it protein-moisture imbalance? Rough handling? Tight styles?
-- Dryness: Wrong products for porosity? Not sealing? Need to clarify?
-- No length retention: Where is it breaking? Ends? Mid-shaft?
-- Frizz: Touching while drying? Wrong product amount? Humidity?
-
-For business problems, dig deeper:
-- No clients: Marketing issue? Visibility? Referral system? Or is it pricing perception?
-- Not making money: Pricing too low? Too many expenses? Wrong services?
-- Burnout: Boundaries? Pricing? Taking wrong clients?
-
-Ask the questions that help identify the real issue.
-Give them a clear action plan - one thing to fix first.
+For hair problems: Check porosity, protein-moisture balance, routine issues
+For business problems: Check pricing, boundaries, marketing, operations
 """,
     }
     return instructions.get(context_type, "")
@@ -280,10 +205,6 @@ Give them a clear action plan - one thing to fix first.
 def _get_tier_instructions(tier: Optional[str]) -> str:
     """
     Get tier-specific instructions based on user membership level.
-    
-    Different tiers get different depth and access:
-    - Basic: New member with 7-day trial access to Tay AI
-    - VIP (Elite): Full access to Community + Mentorship + Tay AI
     """
     if not tier:
         return ""
@@ -292,40 +213,16 @@ def _get_tier_instructions(tier: Optional[str]) -> str:
     
     instructions = {
         "basic": """
-## TIER: Basic Member (Trial Access)
+## Member Tier: Basic (Trial)
 
-This member is on a 7-day trial. They're new to TaysLuxe and exploring:
-
-**Approach:**
-- Give them real value - don't hold back useful advice
-- Show them what Tay AI actually delivers
-- Be direct and helpful - let the quality speak for itself
-
-**What to focus on:**
-- Foundational education they can use immediately
-- Clear, actionable advice
-- Avoid being salesy about upgrading - just be good
-
-**Trial Context:**
-- They have 7 days to experience Tay AI
-- They can join the community for $37
-- Full Elite access includes Community + Mentorship + Tay AI
+This user is on a trial. Provide helpful, valuable answers that demonstrate 
+the quality of TaysLuxe Academy. Be welcoming and supportive.
 """,
         "vip": """
-## TIER: Elite Member (VIP)
+## Member Tier: Elite (VIP)
 
-This member has full Elite access - Community + Mentorship + Tay AI:
-
-**Approach:**
-- Give them everything - they've invested in full access
-- Deep dive into advanced topics
-- Challenge them to think at a higher level
-
-**What to focus on:**
-- Master-level insights and strategies
-- Advanced business frameworks
-- Industry-level thinking
-- Building a brand, not just a service
+This user has full access. Provide comprehensive, detailed guidance. 
+They've invested in their growth - give them your best insights.
 """,
     }
     
@@ -335,13 +232,12 @@ This member has full Elite access - Community + Mentorship + Tay AI:
 def _get_rag_instructions() -> str:
     """Get instructions for how to use RAG-retrieved context."""
     return """
-## USING KNOWLEDGE BASE CONTEXT
+## Using Knowledge Base Content
 
-When provided with context from the knowledge base:
-1. Prioritize information from the provided context
-2. Seamlessly integrate knowledge base content into your response
-3. If context doesn't fully answer, supplement with your expertise
-4. Never explicitly mention "the knowledge base" to the user
-5. Present information as natural advice from Tay
-6. Reference specific courses, frameworks, or content naturally when relevant
+When knowledge base content is provided:
+1. **Prioritize this information** - it's verified TaysLuxe Academy content
+2. Integrate the content naturally into your response
+3. If the content doesn't fully answer the question, supplement with your expertise
+4. Never say "according to the knowledge base" - just share the information naturally
+5. Present TaysLuxe Academy content as authoritative guidance
 """
