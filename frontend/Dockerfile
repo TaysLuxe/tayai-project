@@ -24,6 +24,13 @@ COPY package.json package-lock.json ./
 # Copy all source files
 COPY . .
 
+# Set build-time environment variables (if needed)
+# NEXT_PUBLIC_* variables must be available at build time
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+
 # Build the Next.js application
 RUN npm run build
 
@@ -32,29 +39,34 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Railway will inject PORT at runtime
+# Next.js will automatically use process.env.PORT if available
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy built application from standalone output
-# Note: Next.js standalone with App Router may not include app directory properly
-# Copy standalone output first
+# Next.js standalone mode creates a minimal production bundle
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
 # Copy public directory (Next.js standalone doesn't include it automatically)
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-# Ensure app directory is available for App Router (standalone may exclude it)
-# The app directory is compiled into .next/server, but we need to ensure it's there
-COPY --from=builder --chown=nextjs:nodejs /app/app ./app
+
+# Copy lib directory (needed for @/lib/api imports)
+# Standalone mode may not include all source directories
+COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
 
 USER nextjs
 
-# Expose the port Next.js runs on
+# Expose the port (Railway will inject $PORT at runtime)
+# EXPOSE requires a number, but Railway will override with its own PORT
 EXPOSE 3000
 
 # Start the Next.js server
-# In standalone mode, server.js should be in the root
+# In standalone mode, server.js is in the root of the standalone output
+# Railway will inject PORT environment variable at runtime
 CMD ["node", "server.js"]
