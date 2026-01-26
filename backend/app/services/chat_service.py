@@ -128,15 +128,20 @@ class ChatService:
             logger.info(f"Processed message for user {user_id}, tokens: {tokens_used}")
             
             # Log question and check for missing KB items (async logging)
-            await self._log_question_and_missing_kb(
-                user_id=user_id,
-                question=message,
-                ai_response=ai_response,
-                context_type=context_type,
-                context_result=context_result,
-                user_tier=user_tier,
-                tokens_used=tokens_used
-            )
+            # Use a separate try/except to not affect the main response
+            try:
+                await self._log_question_and_missing_kb(
+                    user_id=user_id,
+                    question=message,
+                    ai_response=ai_response,
+                    context_type=context_type,
+                    context_result=context_result,
+                    user_tier=user_tier,
+                    tokens_used=tokens_used
+                )
+            except Exception as log_error:
+                logger.error(f"Error in logging (non-fatal): {log_error}")
+                await self.db.rollback()
             
             # Build response
             result = ChatResponse(
@@ -152,6 +157,11 @@ class ChatService:
             
         except Exception as e:
             logger.error(f"Error processing message: {e}")
+            # Rollback any failed transaction
+            try:
+                await self.db.rollback()
+            except:
+                pass
             return ChatResponse(
                 response=FALLBACK_RESPONSES["error_graceful"],
                 tokens_used=0,
@@ -538,6 +548,10 @@ class ChatService:
         except Exception as e:
             # Don't fail the request if logging fails
             logger.error(f"Error logging question/missing KB: {e}")
+            try:
+                await self.db.rollback()
+            except:
+                pass
     
     @staticmethod
     def _detect_missing_kb(question: str, ai_response: str, context_result: ContextResult) -> Optional[Dict]:

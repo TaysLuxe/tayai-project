@@ -112,18 +112,17 @@ class RAGService:
             # Convert embedding list to PostgreSQL vector format string
             embedding_str = "[" + ",".join(map(str, embedding)) + "]"
             
-            query_sql = """
+            query_sql = f"""
                 SELECT 
                     id,
                     content,
                     meta_data,
-                    1 - (embedding <=> :query_vector::vector) as similarity
+                    1 - (embedding <=> '{embedding_str}'::vector) as similarity
                 FROM vector_embeddings
-                WHERE 1 - (embedding <=> :query_vector::vector) >= :threshold
+                WHERE 1 - (embedding <=> '{embedding_str}'::vector) >= :threshold
             """
             
             params = {
-                "query_vector": embedding_str,
                 "threshold": score_threshold
             }
             
@@ -449,18 +448,16 @@ class RAGService:
         embedding = await self._generate_embedding(query)
         embedding_str = "[" + ",".join(map(str, embedding)) + "]"
         
-        query_sql = """
+        query_sql = f"""
             SELECT 
                 id,
-                metadata,
-                1 - (embedding <=> :query_vector::vector) as similarity
+                meta_data,
+                1 - (embedding <=> '{embedding_str}'::vector) as similarity
             FROM vector_embeddings
-            WHERE 1 - (embedding <=> :query_vector::vector) > 0
+            WHERE 1 - (embedding <=> '{embedding_str}'::vector) > 0
         """
         
-        params = {
-            "query_vector": embedding_str
-        }
+        params = {}
         
         if namespace:
             query_sql += " AND namespace = :namespace"
