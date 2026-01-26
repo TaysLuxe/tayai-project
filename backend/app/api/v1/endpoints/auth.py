@@ -119,7 +119,7 @@ async def refresh_token(
     return create_user_tokens(user)
 
 
-@router.post("/verify", response_model=UserVerify)
+@router.get("/verify", response_model=UserVerify)
 async def verify_token(token: str = Depends(oauth2_scheme)):
     """Verify JWT token and return user info."""
     payload = decode_access_token(token)
