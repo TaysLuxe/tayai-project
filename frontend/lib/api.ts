@@ -185,7 +185,7 @@ export const authApi = {
 
 export const chatApi = {
   sendMessage: async (message: string, conversationHistory: Array<{ role: string; content: string }>) => {
-    const response = await apiClient.post('/chat', {
+    const response = await apiClient.post('/chat/', {
       message,
       conversation_history: conversationHistory,
     });
