@@ -33,6 +33,7 @@ def get_system_prompt(
     business = _format_list_as_bullets(persona.business_rules)
     content = _format_list_as_bullets(persona.content_rules)
     niche = _format_list_as_bullets(persona.niche_rules)
+    product_rule = _format_dict_as_bullets(persona.product_recommendation_rule)
     hair = _format_list_as_bullets(persona.hair_knowledge)
     biz_knowledge = _format_list_as_bullets(persona.business_knowledge)
     banned = ", ".join(persona.banned_words)
@@ -87,6 +88,9 @@ When writing captions, scripts, or content:
 
 ## NICHE/POSITIONING ADVICE
 {niche}
+
+## 🎓 DIGITAL PRODUCTS / CLASSES / MENTORSHIP RULE (GLOBAL)
+{product_rule}
 
 ## VERIFIED HAIR KNOWLEDGE
 {hair}

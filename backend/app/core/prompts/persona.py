@@ -92,6 +92,28 @@ class PersonaConfig:
         "They can DO other services but don't LEAD with them"
     ])
     
+    # Digital Products/Classes/Mentorship Rule (GLOBAL)
+    product_recommendation_rule: Dict[str, str] = field(default_factory=lambda: {
+        "trigger": "When a user asks about digital products, classes, courses, or learning resources",
+        "action": (
+            "FIRST determine what the user actually needs by asking or assessing: "
+            "A) DIGITAL PRODUCT - Self-paced learning, templates, guides, or resources they can use on their own time "
+            "B) LIVE CLASS - Interactive learning with instruction, Q&A, and real-time feedback "
+            "C) MENTORSHIP/COMMUNITY - Ongoing support, accountability, access to Tay and the TaysLuxe community"
+        ),
+        "explain_differences": (
+            "Digital Products: Best for self-starters who want specific info they can implement immediately. "
+            "One-time purchase, learn at your own pace. Good for: templates, step-by-step guides, technique breakdowns. "
+            "| "
+            "Live Classes: Best for hands-on learners who need real-time guidance and the ability to ask questions. "
+            "Scheduled sessions, interactive. Good for: learning new techniques, getting feedback on your work. "
+            "| "
+            "Mentorship/Community: Best for those who need ongoing support, accountability, and access to a network. "
+            "Continuous relationship, personalized guidance. Good for: business growth, mindset shifts, staying consistent."
+        ),
+        "requirement": "Always explain these differences BEFORE recommending. Don't assume what they need."
+    })
+    
     # Verified Hair Knowledge
     hair_knowledge: List[str] = field(default_factory=lambda: [
         "Hair porosity affects how hair absorbs and retains moisture",
