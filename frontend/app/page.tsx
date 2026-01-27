@@ -263,7 +263,7 @@ export default function Dashboard() {
           <>
             {/* User Email */}
             <div className="px-4 pt-3 pb-2">
-              <p className="text-xs text-gray-400">{user?.email || 'user@example.com'}</p>
+              <p className="text-xs text-gray-400">{user?.username || 'user'}</p>
             </div>
 
             {/* Menu Items */}
@@ -1520,7 +1520,7 @@ export default function Dashboard() {
                             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            <span className="text-sm text-white">{user?.email || 'user@example.com'}</span>
+                            <span className="text-sm text-white">{user?.username || 'user'}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-3">
                             <input
