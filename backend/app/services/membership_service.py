@@ -12,6 +12,7 @@ import logging
 import httpx
 from typing import Optional, Dict, Any
 from enum import Enum
+from datetime import datetime, timedelta, timezone
 
 from app.core.config import settings
 from app.core.constants import UserTier
@@ -314,3 +315,113 @@ class MembershipService:
                 return max(tiers, key=lambda t: tier_order.get(t, 0))
         
         return UserTier.BASIC
+    
+    # =========================================================================
+    # Subscription Access Expiration Calculation
+    # =========================================================================
+    
+    def calculate_subscription_access_end_date(
+        self,
+        tier: UserTier,
+        subscription_start_date: Optional[datetime] = None,
+        subscription_end_date: Optional[datetime] = None
+    ) -> Optional[datetime]:
+        """
+        Calculate when subscription access expires for TayAI.
+        
+        Rules:
+        - BASIC tier ($37): 3 weeks access from Feb 6th
+        - VIP tier: Access starts from Feb 6th, then full access while subscription active, expires when subscription ends
+        
+        Args:
+            tier: User's tier
+            subscription_start_date: When subscription started (from webhook)
+            subscription_end_date: When subscription ends (from webhook, for VIP tier)
+            
+        Returns:
+            Access expiration datetime or None if access should be revoked immediately
+        """
+        # Parse access start date from config (Feb 6th, 2026)
+        try:
+            access_start = datetime.fromisoformat(
+                settings.SKOOL_ACCESS_START_DATE.replace('Z', '+00:00')
+            )
+            if access_start.tzinfo is None:
+                access_start = access_start.replace(tzinfo=timezone.utc)
+        except Exception as e:
+            logger.warning(f"Failed to parse SKOOL_ACCESS_START_DATE, using Feb 6, 2026: {e}")
+            access_start = datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
+        
+        now = datetime.now(timezone.utc)
+        
+        if tier == UserTier.BASIC:
+            # BASIC tier: 3 weeks access from Feb 6th
+            # Access always starts from Feb 6th (or now if after Feb 6th)
+            start_date = max(access_start, now)
+            
+            # Add 3 weeks (21 days)
+            access_end = start_date + timedelta(days=settings.BASIC_TIER_ACCESS_DAYS)
+            logger.info(
+                f"BASIC tier access: {start_date.isoformat()} -> {access_end.isoformat()} "
+                f"({settings.BASIC_TIER_ACCESS_DAYS} days from Feb 6th)"
+            )
+            return access_end
+        
+        elif tier == UserTier.VIP:
+            # VIP tier: Access starts from Feb 6th, then full access while subscription active
+            # Access expires when subscription ends
+            if subscription_end_date:
+                # Ensure timezone-aware
+                if subscription_end_date.tzinfo is None:
+                    subscription_end_date = subscription_end_date.replace(tzinfo=timezone.utc)
+                
+                # Ensure subscription end is not before access start date
+                # If subscription ends before Feb 6th, access should be revoked immediately
+                if subscription_end_date < access_start:
+                    logger.warning(
+                        f"VIP subscription ends ({subscription_end_date.isoformat()}) before access start "
+                        f"({access_start.isoformat()}), revoking access immediately"
+                    )
+                    return now  # Revoke immediately
+                
+                logger.info(
+                    f"VIP tier access: starts {access_start.isoformat()}, expires {subscription_end_date.isoformat()}"
+                )
+                return subscription_end_date
+            else:
+                # If no end date provided, assume subscription is active indefinitely
+                # (will be updated when cancellation webhook arrives)
+                # Access still starts from Feb 6th
+                logger.info(
+                    f"VIP tier access: starts {access_start.isoformat()}, no expiration (active subscription)"
+                )
+                return None  # None means active (no expiration)
+        
+        return None
+    
+    def get_access_start_date(self) -> datetime:
+        """
+        Get the access start date (Feb 6th, 2026).
+        
+        Returns:
+            Access start datetime
+        """
+        try:
+            access_start = datetime.fromisoformat(
+                settings.SKOOL_ACCESS_START_DATE.replace('Z', '+00:00')
+            )
+            if access_start.tzinfo is None:
+                access_start = access_start.replace(tzinfo=timezone.utc)
+            return access_start
+        except Exception as e:
+            logger.warning(f"Failed to parse SKOOL_ACCESS_START_DATE, using Feb 6, 2026: {e}")
+            return datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
+    
+    def revoke_access(self) -> datetime:
+        """
+        Calculate immediate access revocation (for cancelled subscriptions).
+        
+        Returns:
+            Current datetime to revoke access immediately
+        """
+        return datetime.now(timezone.utc)

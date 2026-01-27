@@ -47,6 +47,8 @@ from app.services.chat_service import ChatService
 from app.services.user_service import UserService
 from app.services.usage_service import UsageService
 from app.core import ConversationContext
+from app.core.constants import UserTier
+from app.core.exceptions import AlreadyExistsError
 from app.utils import truncate_text
 from app.dependencies import get_current_admin
 
@@ -1002,4 +1004,97 @@ async def get_all_logging_stats(
         missing_kb=missing_kb_result,
         questions=question_result
     )
+
+
+# =============================================================================
+# User Management - Seed Test Users
+# =============================================================================
+
+@router.post("/users/seed")
+async def seed_test_users(
+    db: AsyncSession = Depends(get_db),
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Seed test users into the database.
+    This endpoint creates the standard test users for development/testing.
+    Requires admin authentication.
+    """
+    from app.db.database import init_db
+    
+    # Initialize database if needed
+    await init_db()
+    
+    user_service = UserService(db)
+    
+    test_users = [
+        {
+            "email": "test@example.com",
+            "username": "testuser",
+            "password": "testpassword123",
+            "tier": UserTier.BASIC,
+            "is_admin": False,
+        },
+        {
+            "email": "vip@example.com",
+            "username": "vipuser",
+            "password": "vippassword123",
+            "tier": UserTier.VIP,
+            "is_admin": False,
+        },
+        {
+            "email": "admin@example.com",
+            "username": "admin",
+            "password": "adminpassword123",
+            "tier": UserTier.VIP,
+            "is_admin": True,
+        },
+    ]
+    
+    results = {
+        "created": [],
+        "skipped": [],
+        "errors": []
+    }
+    
+    for user_data in test_users:
+        try:
+            user = await user_service.create_user(
+                email=user_data["email"],
+                username=user_data["username"],
+                password=user_data["password"],
+                tier=user_data["tier"],
+                is_admin=user_data["is_admin"],
+                start_trial=(user_data["tier"] == UserTier.BASIC)
+            )
+            results["created"].append({
+                "username": user.username,
+                "email": user.email,
+                "tier": user.tier.value
+            })
+        except AlreadyExistsError:
+            results["skipped"].append(user_data["username"])
+        except Exception as e:
+            results["errors"].append({
+                "username": user_data["username"],
+                "error": str(e)
+            })
+    
+    await db.commit()
+    
+    return {
+        "message": "Seed operation completed",
+        "summary": {
+            "created": len(results["created"]),
+            "skipped": len(results["skipped"]),
+            "errors": len(results["errors"]),
+            "total": len(test_users)
+        },
+        "details": results,
+        "credentials": {
+            "testuser": "testpassword123",
+            "vipuser": "vippassword123",
+            "admin": "adminpassword123"
+        }
+    }
 

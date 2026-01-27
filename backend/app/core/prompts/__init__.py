@@ -23,7 +23,12 @@ Usage:
 """
 from .persona import PersonaConfig, DEFAULT_PERSONA
 from .context import ConversationContext, CONTEXT_KEYWORDS, detect_conversation_context
-from .generation import get_system_prompt, get_context_injection_prompt
+from .generation import (
+    get_system_prompt, 
+    get_context_injection_prompt,
+    detect_instagram_intent,
+    get_instagram_intelligence_prompt
+)
 from .recipes import detect_recipe, get_recipe_prompt, get_all_recipes_reference, ALL_RECIPES
 from .fallbacks import FALLBACK_RESPONSES
 
@@ -38,6 +43,8 @@ __all__ = [
     # Generation
     "get_system_prompt",
     "get_context_injection_prompt",
+    "detect_instagram_intent",
+    "get_instagram_intelligence_prompt",
     # Recipes
     "detect_recipe",
     "get_recipe_prompt",

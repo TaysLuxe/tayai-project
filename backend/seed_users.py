@@ -7,6 +7,8 @@ This script creates the same test users that are used in test fixtures.
 
 Usage:
     python seed_users.py
+    python3 seed_users.py
+    python run_seed.py
 
 Or with virtual environment:
     source venv/bin/activate
@@ -14,6 +16,19 @@ Or with virtual environment:
 """
 import asyncio
 import sys
+import os
+from pathlib import Path
+
+# Ensure we can import from app directory
+# Add the backend directory to Python path if needed
+script_dir = Path(__file__).parent.absolute()
+backend_dir = script_dir
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Change to script directory to ensure relative imports work
+os.chdir(script_dir)
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import AsyncSessionLocal, init_db
@@ -34,7 +49,7 @@ TEST_USERS = [
     {
         "email": "vip@example.com",
         "username": "vipuser",
-        "password": "testpassword123",
+        "password": "vippassword123",
         "tier": UserTier.VIP,
         "is_admin": False,
     },
@@ -50,6 +65,8 @@ TEST_USERS = [
 
 async def seed_users():
     """Seed test users into the database."""
+    print(f"Running from directory: {os.getcwd()}")
+    print(f"Script location: {Path(__file__).parent.absolute()}")
     print("Initializing database...")
     await init_db()
     

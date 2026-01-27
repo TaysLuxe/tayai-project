@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
 from app.core.security import decode_access_token
+from app.core.config import settings
 from app.services.user_service import UserService
 
 # OAuth2 scheme for token extraction
@@ -67,6 +68,35 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+    
+    # Check subscription access (for Skool integration)
+    # Skip check for admins
+    if not user.is_admin:
+        access_active = await user_service.is_subscription_access_active(user.id)
+        if not access_active:
+            access_status = await user_service.get_subscription_access_status(user.id)
+            # Check if access hasn't started yet (before Feb 6th)
+            from app.core.config import settings
+            from datetime import datetime, timezone
+            try:
+                access_start = datetime.fromisoformat(
+                    settings.SKOOL_ACCESS_START_DATE.replace('Z', '+00:00')
+                )
+                if access_start.tzinfo is None:
+                    access_start = access_start.replace(tzinfo=timezone.utc)
+            except Exception:
+                access_start = datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
+            
+            now = datetime.now(timezone.utc)
+            if now < access_start:
+                detail = f"TayAI access starts on {access_start.date()}. Please check back then."
+            else:
+                detail = "Your Skool subscription access has expired. Please renew your subscription to continue using TayAI."
+            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=detail
+            )
     
     # Build comprehensive user context
     return {
