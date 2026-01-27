@@ -23,27 +23,27 @@ Select your project when prompted.
 
 3. **Run the seeder:**
 
-**Option A: Using the shell script (Recommended - handles path detection):**
+**Option A: Using the shell script with full path (Recommended):**
 ```bash
-railway run --service backend bash seed_railway.sh
+railway run --service backend bash /app/seed_railway.sh
 ```
 
-**Option B: Change to backend directory first:**
+**Option B: Direct Python command (Simplest):**
 ```bash
 railway run --service backend sh -c "cd /app && python run_seed.py"
 ```
 
-**Option C: Use full path (if Railway runs from project root):**
-```bash
-railway run --service backend sh -c "python /app/run_seed.py"
-```
-
-**Option D: Direct seed_users.py (if in /app directory):**
+**Option C: Direct seed_users.py:**
 ```bash
 railway run --service backend sh -c "cd /app && python seed_users.py"
 ```
 
-**Note:** Railway containers use `/app` as the working directory. If the command fails, try Option A (shell script) which automatically detects the correct path.
+**Option D: Using full path to script:**
+```bash
+railway run --service backend sh -c "python /app/run_seed.py"
+```
+
+**Note:** Railway containers use `/app` as the working directory (set in Dockerfile). All backend files are copied to `/app` during build, so use `/app/` prefix for file paths.
 
 ---
 
