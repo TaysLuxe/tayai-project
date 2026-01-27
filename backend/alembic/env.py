@@ -23,7 +23,7 @@ sys.path.insert(0, str(backend_dir))
 # Fix BACKEND_CORS_ORIGINS if it's empty or invalid
 cors_origins = os.getenv("BACKEND_CORS_ORIGINS", "")
 if not cors_origins or cors_origins.strip() == "":
-    os.environ["BACKEND_CORS_ORIGINS"] = '["http://localhost:3000","http://localhost:3001"]'
+    os.environ["BACKEND_CORS_ORIGINS"] = '["http://localhost:3000","http://localhost:3001","https://ai.taysluxeacademy.com"]'
 elif not cors_origins.strip().startswith("["):
     # If it's not JSON, convert it to JSON array
     os.environ["BACKEND_CORS_ORIGINS"] = f'["{cors_origins}"]'
