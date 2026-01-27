@@ -50,12 +50,12 @@ def get_system_prompt(
         if onboarding.get("preferred_communication_style"):
             user_context_section += f"• **Communication Style**: {onboarding['preferred_communication_style']}\n"
         
-        user_context_section += "\n**Use this context to:**
-• Address them by name when appropriate
-• Tailor advice to their specific business type and focus
-• Reference their goals and challenges when relevant
-• Match their preferred communication style
-• Provide context-appropriate guidance based on their experience level\n\n"
+        user_context_section += "\n**Use this context to:**\n"
+        user_context_section += "• Address them by name when appropriate\n"
+        user_context_section += "• Tailor advice to their specific business type and focus\n"
+        user_context_section += "• Reference their goals and challenges when relevant\n"
+        user_context_section += "• Match their preferred communication style\n"
+        user_context_section += "• Provide context-appropriate guidance based on their experience level\n\n"
     
     # Build sections
     rules = _format_list_as_bullets(persona.core_rules)
