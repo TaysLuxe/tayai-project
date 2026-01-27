@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://ai.taysluxeacademy.com",
     ]
     
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
@@ -63,7 +64,11 @@ class Settings(BaseSettings):
                 return [v.strip()]
         
         # Default fallback
-        default = ["http://localhost:3000", "http://localhost:3001"]
+        default = [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "https://ai.taysluxeacademy.com",
+        ]
         logger.warning(f"Could not parse CORS origins, using default: {default}")
         return default
     
