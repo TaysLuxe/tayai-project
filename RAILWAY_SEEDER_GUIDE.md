@@ -1,78 +1,81 @@
 # Running User Seeder in Railway
 
-## Method 1: Using Railway CLI
+## Method 1: Using Railway Web Interface (Recommended)
 
-### Prerequisites
-Install Railway CLI if you haven't already:
-```bash
-npm i -g @railway/cli
-```
+**Note:** Railway CLI `run` command executes locally on your machine, not inside the container. To run commands inside the deployed container, use the web interface.
 
 ### Steps
 
-1. **Login to Railway:**
+1. **Go to Railway Dashboard:**
+   - Visit https://railway.app
+   - Select your project: `stellar-playfulness`
+   - Select your **backend** service
+
+2. **Open the Shell/Console:**
+   - Click on the **"Deployments"** tab
+   - Click on the latest deployment
+   - Click **"View Logs"** or look for **"Shell"** / **"Console"** tab
+   - Or use the **"Shell"** button in the service view
+
+3. **Run the seeder in the container:**
 ```bash
-railway login
+cd /app
+python run_seed.py
 ```
 
-2. **Link to your project:**
+Or directly:
 ```bash
+python /app/seed_users.py
+```
+
+**Note:** Inside the Railway container, the working directory is `/app` and all backend files are there.
+
+---
+
+## Method 2: Using Railway CLI (Local Execution with Remote Env Vars)
+
+**Important:** Railway CLI `run` executes locally but with remote environment variables. This only works if you have the same Python environment and dependencies installed locally.
+
+### Prerequisites
+```bash
+npm i -g @railway/cli
+railway login
 railway link
 ```
-Select your project when prompted.
 
-3. **Run the seeder:**
-
-**Option A: Using the shell script with full path (Recommended):**
+### Run Locally (with Railway env vars):
 ```bash
-railway run --service backend bash /app/seed_railway.sh
-```
+# Make sure you're in the project root
+cd /Users/jumar.juaton/Downloads/Developer/tayai-project
 
-**Option B: Direct Python command (Simplest):**
-```bash
-railway run --service backend sh -c "cd /app && python run_seed.py"
-```
-
-**Option C: Direct seed_users.py:**
-```bash
-railway run --service backend sh -c "cd /app && python seed_users.py"
-```
-
-**Option D: Using full path to script:**
-```bash
-railway run --service backend sh -c "python /app/run_seed.py"
-```
-
-**Note:** Railway containers use `/app` as the working directory (set in Dockerfile). All backend files are copied to `/app` during build, so use `/app/` prefix for file paths.
-
----
-
-## Method 2: Using Railway Web Interface
-
-1. Go to your Railway project dashboard
-2. Select your **backend** service
-3. Click on the **"Deployments"** tab
-4. Click on the latest deployment
-5. Click **"View Logs"** or open the **"Shell"** tab
-6. Run:
-```bash
-python run_seed.py
-```
-
-Or navigate to the backend directory first:
-```bash
+# Install dependencies locally first
 cd backend
-python run_seed.py
+pip install -r requirements.txt
+
+# Run with Railway environment variables
+railway run --service backend sh -c "cd backend && python3 run_seed.py"
 ```
+
+**Note:** This requires local Python environment with all dependencies installed. For production, use Method 1 (Web Interface) instead.
 
 ---
 
-## Method 3: One-off Command via Railway CLI
+## Method 3: Add to Railway Start Command (One-time Setup)
 
-You can also run it as a one-off command:
+You can configure Railway to run the seeder automatically on first deployment:
+
+1. Go to Railway Dashboard → Backend Service → Settings
+2. Add to **Start Command** (temporary):
 ```bash
-railway run --service backend --command "python run_seed.py"
+sh -c "python /app/run_seed.py && uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"
 ```
+
+3. After first deployment, remove the seeder part and keep only:
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+```
+
+**Note:** This runs the seeder on every deployment. Only use for initial setup, then switch back to normal start command.
 
 ---
 
