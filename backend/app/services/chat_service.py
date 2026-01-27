@@ -40,8 +40,9 @@ from app.core.prompts import (
     detect_instagram_intent,
     get_instagram_intelligence_prompt,
 )
-from app.db.models import ChatMessage, MissingKBItem, QuestionLog
+from app.db.models import ChatMessage, MissingKBItem, QuestionLog, User
 from app.services.rag_service import RAGService, ContextResult
+from app.services.user_service import UserService
 from app.schemas.chat import ChatResponse
 import re
 from datetime import datetime
@@ -113,9 +114,19 @@ class ChatService:
             
             logger.info(f"KB confidence: {kb_confidence:.2f} (threshold: {RAG_MIN_CONFIDENCE})")
             
-            # Build messages with confidence info
+            # Fetch user profile data for personalization
+            user_profile = None
+            try:
+                user_service = UserService(self.db)
+                user = await user_service.get_user_by_id(user_id)
+                if user and user.profile_data:
+                    user_profile = user.profile_data
+            except Exception as e:
+                logger.warning(f"Failed to fetch user profile: {e}")
+            
+            # Build messages with confidence info and user profile
             messages = self._build_messages(
-                message, context, conversation_history, context_type, user_tier, kb_confidence
+                message, context, conversation_history, context_type, user_tier, kb_confidence, user_profile
             )
             
             # Generate response (with banned word checking)
@@ -243,14 +254,16 @@ class ChatService:
         history: Optional[List[Dict]],
         context_type: ConversationContext,
         user_tier: Optional[str] = None,
-        kb_confidence: float = 1.0
+        kb_confidence: float = 1.0,
+        user_profile: Optional[dict] = None
     ) -> List[Dict]:
         """Build the message array for OpenAI API."""
         messages = [
             {"role": "system", "content": get_system_prompt(
                 context_type=context_type,
                 user_tier=user_tier,
-                kb_confidence=kb_confidence
+                kb_confidence=kb_confidence,
+                user_profile=user_profile
             )}
         ]
         

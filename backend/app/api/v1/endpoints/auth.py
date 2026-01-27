@@ -31,6 +31,7 @@ from app.schemas.auth import (
     UserCreate,
     UserResponse,
     PasswordChange,
+    OnboardingProfile,
 )
 from app.services.user_service import UserService
 from app.services.membership_service import MembershipService, MembershipPlatform
@@ -41,6 +42,7 @@ from app.utils import create_user_tokens
 import httpx
 import logging
 import secrets
+from datetime import datetime, timezone
 
 from pydantic import BaseModel
 
@@ -274,7 +276,12 @@ async def get_user_profile(
             logger.warning(f"Failed to fetch profile from platform: {e}")
             # Continue with cached profile_data
     
-    # Build response
+    # Build response with onboarding info in metadata
+    response_metadata = profile_data.get("metadata", {})
+    if profile_data.get("onboarding_completed"):
+        response_metadata["onboarding_completed"] = True
+        response_metadata["onboarding"] = profile_data.get("onboarding", {})
+    
     return UserProfile(
         user_id=user.id,
         email=user.email,
@@ -285,8 +292,49 @@ async def get_user_profile(
         enrolled_courses=profile_data.get("enrolled_courses"),
         membership_start_date=profile_data.get("membership_start_date"),
         last_active=profile_data.get("last_active"),
-        metadata=profile_data.get("metadata")
+        metadata=response_metadata
     )
+
+
+@router.post("/profile", response_model=UserResponse)
+async def save_user_profile(
+    profile_data: OnboardingProfile,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Save user onboarding profile data.
+    
+    Stores onboarding responses in the user's profile_data JSON field.
+    This data will be used to personalize the AI assistant's responses.
+    """
+    user_service = UserService(db)
+    user = await user_service.get_user_by_id(current_user["user_id"])
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Get existing profile_data or create new dict
+    existing_profile = user.profile_data or {}
+    
+    # Merge onboarding data into profile_data
+    onboarding_dict = profile_data.model_dump(exclude_none=True)
+    updated_profile = {
+        **existing_profile,
+        "onboarding": onboarding_dict,
+        "onboarding_completed": True,
+        "onboarding_completed_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update user profile
+    await user_service.update_user(user.id, profile_data=updated_profile)
+    
+    # Return updated user
+    updated_user = await user_service.get_user_by_id(user.id)
+    return UserResponse.model_validate(updated_user)
 
 
 @router.post("/sso", response_model=Token)

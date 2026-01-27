@@ -5,6 +5,7 @@ import ChatWidget from '@/components/ChatWidget';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { profileApi } from '@/lib/api';
 
 interface ChatSession {
   id: number;
@@ -30,12 +31,38 @@ export default function Dashboard() {
   const helpButtonRef = useRef<HTMLButtonElement>(null);
   const [helpMenuPosition, setHelpMenuPosition] = useState({ top: 0, left: 0 });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, loading, router]);
+
+  // Check if user has completed onboarding
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (!loading && isAuthenticated) {
+        try {
+          const profile = await profileApi.getProfile();
+          // Check if onboarding is completed
+          const onboardingCompleted = profile?.metadata?.onboarding_completed === true;
+          
+          if (!onboardingCompleted) {
+            router.push('/onboarding');
+          } else {
+            setCheckingOnboarding(false);
+          }
+        } catch (error) {
+          // If profile fetch fails, assume onboarding not completed
+          console.error('Failed to check onboarding status:', error);
+          router.push('/onboarding');
+        }
+      }
+    };
+
+    checkOnboarding();
+  }, [loading, isAuthenticated, router]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -111,7 +138,7 @@ export default function Dashboard() {
     return chatHistory.filter((session) => session.title.toLowerCase().includes(term));
   }, [chatHistory, searchTerm]);
 
-  if (loading) {
+  if (loading || checkingOnboarding) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0f0f0f]">
         <div className="text-center px-4">
