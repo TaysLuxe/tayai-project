@@ -52,10 +52,23 @@ def run_migrations():
         print("✓ Migrations completed successfully!")
         return 0
     except Exception as e:
-        print(f"✗ Migration failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return 1
+        error_str = str(e)
+        # Check if it's a duplicate table/index error - these are often safe to ignore
+        # if the migration is idempotent
+        if "already exists" in error_str.lower() or "duplicate" in error_str.lower():
+            print(f"⚠ Warning: {error_str}")
+            print("This may be safe to ignore if tables/indexes already exist.")
+            print("Checking if we can continue...")
+            # Try to continue - if it's just a duplicate, the migration might still be partially applied
+            # In this case, we'll let it fail and the migration itself should handle idempotency
+            import traceback
+            traceback.print_exc()
+            return 1
+        else:
+            print(f"✗ Migration failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return 1
 
 if __name__ == "__main__":
     exit_code = run_migrations()
