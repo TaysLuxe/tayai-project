@@ -228,7 +228,7 @@ export default function ChatWidget() {
             
             {/* Bottom Row */}
             <div className="flex items-center justify-between px-3 pb-3 pt-2 border-t border-[#2a2a2a]">
-              {/* Left Side - Plus and History */}
+              {/* Left Side - Plus */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -239,32 +239,10 @@ export default function ChatWidget() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </button>
-                
-                <button
-                  type="button"
-                  className="p-2 border border-blue-500 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
-                  title="History"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6l4 2" />
-                  </svg>
-                </button>
               </div>
               
-              {/* Right Side - Model Selection and Send */}
+              {/* Right Side - Send */}
               <div className="flex items-center gap-3">
-                {/* Model Selection */}
-                <button
-                  type="button"
-                  className="flex items-center gap-1 px-3 py-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#2a2a2a] rounded-lg transition-colors text-sm"
-                >
-                  <span>Haiku 4.5</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
                 {/* Send Button */}
                 <button
                   type="submit"
