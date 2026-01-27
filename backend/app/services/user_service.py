@@ -135,7 +135,8 @@ class UserService(BaseService[User]):
         tier: Optional[UserTier] = None,
         is_active: Optional[bool] = None,
         is_admin: Optional[bool] = None,
-        profile_data: Optional[dict] = None
+        profile_data: Optional[dict] = None,
+        subscription_access_end_date: Optional[datetime] = None
     ) -> User:
         """
         Update user fields.
@@ -173,6 +174,8 @@ class UserService(BaseService[User]):
             user.is_admin = is_admin
         if profile_data is not None:
             user.profile_data = profile_data
+        if subscription_access_end_date is not None:
+            user.subscription_access_end_date = subscription_access_end_date
         
         await self.db.commit()
         await self.db.refresh(user)
@@ -333,4 +336,113 @@ class UserService(BaseService[User]):
             "days_remaining": days_remaining,
             "trial_end_date": user.trial_end_date.isoformat() if user.trial_end_date else None,
             "trial_start_date": user.trial_start_date.isoformat() if user.trial_start_date else None
+        }
+    
+    async def is_subscription_access_active(self, user_id: int) -> bool:
+        """
+        Check if user's subscription access is still active.
+        
+        Rules:
+        - Access starts from Feb 6th, 2026 (no access before this date)
+        - Access is active if current time is before expiration
+        
+        Returns:
+            True if subscription access is active, False if expired or before access start date
+        """
+        from app.core.config import settings
+        
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            return False
+        
+        now = datetime.now(timezone.utc)
+        
+        # Check if access has started (Feb 6th, 2026)
+        try:
+            access_start = datetime.fromisoformat(
+                settings.SKOOL_ACCESS_START_DATE.replace('Z', '+00:00')
+            )
+            if access_start.tzinfo is None:
+                access_start = access_start.replace(tzinfo=timezone.utc)
+        except Exception:
+            access_start = datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
+        
+        # If current time is before access start date, access is not active
+        if now < access_start:
+            return False
+        
+        # If no subscription_access_end_date is set, access is active (after start date)
+        if not user.subscription_access_end_date:
+            return True
+        
+        # Make subscription_access_end_date timezone-aware if it isn't
+        access_end = user.subscription_access_end_date
+        if access_end.tzinfo is None:
+            access_end = access_end.replace(tzinfo=timezone.utc)
+        
+        # Access is active if current time is before expiration
+        return now < access_end
+    
+    async def get_subscription_access_status(self, user_id: int) -> Dict:
+        """
+        Get subscription access status information for a user.
+        
+        Returns:
+            Dict with access_active, access_start_date, access_end_date, days_remaining
+        """
+        from app.core.config import settings
+        
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            return {
+                "access_active": False,
+                "access_start_date": None,
+                "access_end_date": None,
+                "days_remaining": 0
+            }
+        
+        now = datetime.now(timezone.utc)
+        
+        # Get access start date (Feb 6th, 2026)
+        try:
+            access_start = datetime.fromisoformat(
+                settings.SKOOL_ACCESS_START_DATE.replace('Z', '+00:00')
+            )
+            if access_start.tzinfo is None:
+                access_start = access_start.replace(tzinfo=timezone.utc)
+        except Exception:
+            access_start = datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
+        
+        # Check if access has started
+        if now < access_start:
+            days_until_start = (access_start - now).days
+            return {
+                "access_active": False,
+                "access_start_date": access_start.isoformat(),
+                "access_end_date": user.subscription_access_end_date.isoformat() if user.subscription_access_end_date else None,
+                "days_remaining": 0,
+                "message": f"Access starts on {access_start.date()}. {days_until_start} days remaining."
+            }
+        
+        if not user.subscription_access_end_date:
+            return {
+                "access_active": True,
+                "access_start_date": access_start.isoformat(),
+                "access_end_date": None,
+                "days_remaining": None  # No expiration
+            }
+        
+        # Make subscription_access_end_date timezone-aware if it isn't
+        access_end = user.subscription_access_end_date
+        if access_end.tzinfo is None:
+            access_end = access_end.replace(tzinfo=timezone.utc)
+        
+        access_active = now < access_end
+        days_remaining = max(0, (access_end - now).days) if access_active else 0
+        
+        return {
+            "access_active": access_active,
+            "access_start_date": access_start.isoformat(),
+            "access_end_date": user.subscription_access_end_date.isoformat(),
+            "days_remaining": days_remaining
         }

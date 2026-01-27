@@ -37,6 +37,8 @@ from app.core.prompts import (
     FALLBACK_RESPONSES,
     detect_recipe,
     get_recipe_prompt,
+    detect_instagram_intent,
+    get_instagram_intelligence_prompt,
 )
 from app.db.models import ChatMessage, MissingKBItem, QuestionLog
 from app.services.rag_service import RAGService, ContextResult
@@ -251,6 +253,16 @@ class ChatService:
                 kb_confidence=kb_confidence
             )}
         ]
+        
+        # Check for Instagram-related intent and inject conditional system prompt
+        # This overrides generic content advice for Instagram questions
+        is_instagram_intent = detect_instagram_intent(user_message)
+        if is_instagram_intent:
+            logger.info("Instagram intent detected - injecting Instagram Intelligence prompt")
+            messages.append({
+                "role": "system",
+                "content": get_instagram_intelligence_prompt()
+            })
         
         # Detect and add recipe if applicable
         recipe = detect_recipe(user_message)

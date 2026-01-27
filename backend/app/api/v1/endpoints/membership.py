@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from pydantic import BaseModel, EmailStr
+from datetime import datetime, timezone
 
 from app.db.database import get_db
 from app.services.membership_service import (
@@ -148,14 +149,62 @@ async def receive_webhook(
             
             tier = membership_service.resolve_tier(event_data.get("product_id", "basic"))
             
-            await user_service.create_user(
+            # Calculate subscription access end date
+            metadata = event_data.get("metadata", {})
+            subscription_start = None
+            subscription_end = None
+            
+            # Try to parse subscription dates from metadata
+            if metadata.get("subscription_start"):
+                try:
+                    subscription_start = datetime.fromisoformat(
+                        metadata["subscription_start"].replace('Z', '+00:00')
+                    )
+                except Exception:
+                    pass
+            
+            if metadata.get("subscription_end"):
+                try:
+                    subscription_end = datetime.fromisoformat(
+                        metadata["subscription_end"].replace('Z', '+00:00')
+                    )
+                except Exception:
+                    pass
+            
+            # If no dates in metadata, use current time as subscription start
+            if not subscription_start:
+                subscription_start = datetime.now(timezone.utc)
+            
+            access_end_date = membership_service.calculate_subscription_access_end_date(
+                tier=tier,
+                subscription_start_date=subscription_start,
+                subscription_end_date=subscription_end
+            )
+            
+            user = await user_service.create_user(
                 email=email,
                 username=username,
                 password=temp_password,
                 tier=tier
             )
-            logger.info(f"Created user from webhook: {email}")
-            return {"status": "created", "email": email, "tier": tier.value}
+            
+            # Update subscription access end date
+            if access_end_date:
+                await user_service.update_user(
+                    user.id,
+                    subscription_access_end_date=access_end_date
+                )
+            
+            logger.info(
+                f"Created user from webhook: {email} (tier={tier.value}, "
+                f"access_ends={access_end_date.isoformat() if access_end_date else 'never'})"
+            )
+            return {
+                "status": "created",
+                "email": email,
+                "tier": tier.value,
+                "access_end_date": access_end_date.isoformat() if access_end_date else None
+            }
         
         return {"status": "exists", "email": email}
     
@@ -165,23 +214,81 @@ async def receive_webhook(
         MembershipEvent.PURCHASE_COMPLETED,
         "new_enrollment"
     ]:
-        # Update user tier
+        # Update user tier and subscription access
         user = await user_service.get_user_by_email(email)
         if user:
             new_tier = membership_service.resolve_tier(event_data.get("product_id", "basic"))
-            await user_service.update_user(user.id, tier=new_tier)
-            logger.info(f"Updated user tier: {email} -> {new_tier.value}")
-            return {"status": "updated", "email": email, "tier": new_tier.value}
+            
+            # Calculate subscription access end date
+            metadata = event_data.get("metadata", {})
+            subscription_start = None
+            subscription_end = None
+            
+            # Try to parse subscription dates from metadata
+            if metadata.get("subscription_start"):
+                try:
+                    subscription_start = datetime.fromisoformat(
+                        metadata["subscription_start"].replace('Z', '+00:00')
+                    )
+                except Exception:
+                    pass
+            
+            if metadata.get("subscription_end"):
+                try:
+                    subscription_end = datetime.fromisoformat(
+                        metadata["subscription_end"].replace('Z', '+00:00')
+                    )
+                except Exception:
+                    pass
+            
+            # If no dates in metadata, use current time as subscription start
+            if not subscription_start:
+                subscription_start = datetime.now(timezone.utc)
+            
+            access_end_date = membership_service.calculate_subscription_access_end_date(
+                tier=new_tier,
+                subscription_start_date=subscription_start,
+                subscription_end_date=subscription_end
+            )
+            
+            await user_service.update_user(
+                user.id,
+                tier=new_tier,
+                subscription_access_end_date=access_end_date
+            )
+            logger.info(
+                f"Updated user tier: {email} -> {new_tier.value} "
+                f"(access_ends={access_end_date.isoformat() if access_end_date else 'never'})"
+            )
+            return {
+                "status": "updated",
+                "email": email,
+                "tier": new_tier.value,
+                "access_end_date": access_end_date.isoformat() if access_end_date else None
+            }
         
         return {"status": "user_not_found", "email": email}
     
     elif event_type in [MembershipEvent.SUBSCRIPTION_CANCELLED, "enrollment_cancelled"]:
-        # Downgrade to basic
+        # Revoke access immediately when subscription is cancelled
         user = await user_service.get_user_by_email(email)
         if user:
-            await user_service.update_user(user.id, tier=UserTier.BASIC)
-            logger.info(f"Downgraded user: {email} -> basic")
-            return {"status": "downgraded", "email": email}
+            # Revoke access immediately
+            access_end_date = membership_service.revoke_access()
+            await user_service.update_user(
+                user.id,
+                tier=UserTier.BASIC,
+                subscription_access_end_date=access_end_date
+            )
+            logger.info(
+                f"Revoked access for user: {email} (subscription cancelled, "
+                f"access_ends={access_end_date.isoformat()})"
+            )
+            return {
+                "status": "access_revoked",
+                "email": email,
+                "access_end_date": access_end_date.isoformat()
+            }
         
         return {"status": "user_not_found", "email": email}
     

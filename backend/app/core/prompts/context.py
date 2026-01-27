@@ -33,7 +33,9 @@ CONTEXT_KEYWORDS: Dict[ConversationContext, List[str]] = {
     ConversationContext.BUSINESS_MENTORSHIP: [
         "business", "client", "price", "pricing", "marketing", "social media",
         "instagram", "booking", "salon", "brand", "money", "income", "profit",
-        "customer", "service", "charge", "start", "grow", "scale", "invest"
+        "customer", "service", "charge", "start", "grow", "scale", "invest",
+        "caption", "reel", "reels", "hashtag", "hashtags", "engagement", "reach",
+        "algorithm", "instagram strategy", "content strategy", "social media strategy"
     ],
     ConversationContext.PRODUCT_RECOMMENDATION: [
         "product", "recommend", "buy", "purchase", "ingredient", "shampoo",

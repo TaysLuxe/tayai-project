@@ -34,6 +34,10 @@ class User(Base):
     trial_start_date = Column(DateTime(timezone=True), nullable=True)
     trial_end_date = Column(DateTime(timezone=True), nullable=True)
     
+    # Subscription access tracking (for Skool integration)
+    # When subscription access expires - used to restrict TayAI access
+    subscription_access_end_date = Column(DateTime(timezone=True), nullable=True)
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

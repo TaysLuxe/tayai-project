@@ -195,24 +195,89 @@ export default function ChatWidget() {
       {/* Input Area */}
       <div className="relative z-10 border-t border-[#2a2a2a] bg-[#1a1a1a] px-4 sm:px-6 py-4">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type a message"
-              className="flex-1 px-4 py-3 bg-[#242424] border border-[#2a2a2a] rounded-full focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 focus:border-[#cba2ff] text-white placeholder-gray-500 text-sm sm:text-base"
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="p-3 bg-[#cba2ff] text-black rounded-full hover:bg-[#b88ff5] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
+          {/* Chat Input Container */}
+          <div className="relative bg-[#242424] border border-[#2a2a2a] rounded-2xl shadow-lg">
+            {/* Placeholder Text Area */}
+            <div className="px-4 pt-3 pb-2">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="How can I help you today?"
+                className="w-full bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none text-sm sm:text-base min-h-[24px] max-h-[200px]"
+                rows={1}
+                disabled={loading}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (input.trim() && !loading) {
+                      handleSend(e as any);
+                    }
+                  }
+                }}
+                style={{
+                  height: 'auto',
+                  overflow: 'hidden',
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = `${target.scrollHeight}px`;
+                }}
+              />
+            </div>
+            
+            {/* Bottom Row */}
+            <div className="flex items-center justify-between px-3 pb-3 pt-2 border-t border-[#2a2a2a]">
+              {/* Left Side - Plus and History */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="p-2 text-gray-400 hover:text-gray-300 hover:bg-[#2a2a2a] rounded-lg transition-colors"
+                  title="Attach files"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+                
+                <button
+                  type="button"
+                  className="p-2 border border-blue-500 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
+                  title="History"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6l4 2" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Right Side - Model Selection and Send */}
+              <div className="flex items-center gap-3">
+                {/* Model Selection */}
+                <button
+                  type="button"
+                  className="flex items-center gap-1 px-3 py-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#2a2a2a] rounded-lg transition-colors text-sm"
+                >
+                  <span>Haiku 4.5</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Send Button */}
+                <button
+                  type="submit"
+                  disabled={loading || !input.trim()}
+                  className="p-2 bg-[#8B4513] hover:bg-[#A0522D] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                  title="Send message"
+                >
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </form>
       </div>

@@ -142,6 +142,15 @@ class Settings(BaseSettings):
         "https://www.skool.com/tla-hair-hutlers-co"
     )
     
+    # Subscription Access Control
+    # Access begins Feb 6th, 2026
+    SKOOL_ACCESS_START_DATE: str = os.getenv(
+        "SKOOL_ACCESS_START_DATE",
+        "2026-02-06T00:00:00Z"
+    )
+    # BASIC tier ($37) gets 3 weeks access
+    BASIC_TIER_ACCESS_DAYS: int = int(os.getenv("BASIC_TIER_ACCESS_DAYS", "21"))  # 3 weeks
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
