@@ -261,7 +261,7 @@ export default function Dashboard() {
         {/* Menu Items - Only visible when user menu is open */}
         {showUserMenu && !isSidebarCollapsed && (
           <>
-            {/* User Email */}
+            {/* User Display - using username since User interface doesn't include email */}
             <div className="px-4 pt-3 pb-2">
               <p className="text-xs text-gray-400">{user?.username || 'user'}</p>
             </div>
