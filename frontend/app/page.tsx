@@ -832,7 +832,7 @@ export default function Dashboard() {
                           <option>Português</option>
                         </select>
                         <p className="text-xs text-gray-500">
-                          For best results, select the language you mainly speak. If it's not listed, it may still be supported via auto-detection.
+                          For best results, select the language you mainly speak. If it&apos;s not listed, it may still be supported via auto-detection.
                         </p>
                       </div>
 
@@ -910,7 +910,7 @@ export default function Dashboard() {
                           <div className="flex-1">
                             <h4 className="text-sm font-medium text-white mb-1">Tasks</h4>
                             <p className="text-xs text-gray-400">
-                              Get notified when tasks you've created have updates.{' '}
+                              Get notified when tasks you&apos;ve created have updates.{' '}
                               <button className="text-[#cba2ff] hover:text-[#b88ff5] underline">
                                 Manage tasks
                               </button>
@@ -977,7 +977,7 @@ export default function Dashboard() {
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-white">Base style and tone</h4>
                         <p className="text-xs text-gray-400">
-                          Set the style and tone of how ChatGPT responds to you. This doesn't impact ChatGPT's capabilities.
+                          Set the style and tone of how ChatGPT responds to you. This doesn&apos;t impact ChatGPT&apos;s capabilities.
                         </p>
                         <select className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
                           <option>Default</option>
@@ -1291,7 +1291,7 @@ export default function Dashboard() {
                           <div className="flex-1">
                             <h4 className="text-sm font-medium text-white mb-1">Passkeys</h4>
                             <p className="text-xs text-gray-400">
-                              Passkeys are secure and protect your account with multi-factor authentication. They don't require any extra steps.
+                              Passkeys are secure and protect your account with multi-factor authentication. They don&apos;t require any extra steps.
                             </p>
                           </div>
                           <button className="ml-4 px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors flex items-center gap-1">
@@ -1395,7 +1395,7 @@ export default function Dashboard() {
                         {/* Info box */}
                         <div className="bg-[#242424] border border-[#2a2a2a] rounded-md p-4">
                           <p className="text-xs text-gray-400">
-                            You haven't used ChatGPT to sign into any websites or apps yet. Once you do, they'll show up here.
+                            You haven&apos;t used ChatGPT to sign into any websites or apps yet. Once you do, they&apos;ll show up here.
                           </p>
                         </div>
                       </div>
