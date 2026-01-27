@@ -136,20 +136,34 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # CORS Middleware (must be first for preflight requests)
 # Log CORS origins for debugging
-logger.info(f"CORS allowed origins: {settings.BACKEND_CORS_ORIGINS}")
+cors_origins = list(settings.BACKEND_CORS_ORIGINS)  # Create a mutable copy
+logger.info(f"CORS allowed origins: {cors_origins}")
+logger.info(f"CORS origins type: {type(cors_origins)}")
+logger.info(f"CORS origins count: {len(cors_origins)}")
+
+# Ensure production frontend is always included (critical for production)
+production_origin = "https://ai.taysluxeacademy.com"
+if production_origin not in cors_origins:
+    logger.warning(f"Production frontend origin ({production_origin}) not in CORS list, adding it")
+    cors_origins.append(production_origin)
+
+logger.info(f"Final CORS allowed origins: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Rate Limit Middleware
 app.add_middleware(RateLimitMiddleware)
 
 # Trusted Host Middleware (production only)
+# Note: This is added AFTER CORS middleware to avoid interfering with preflight requests
 if settings.ENVIRONMENT == "production":
     app.add_middleware(
         TrustedHostMiddleware,
