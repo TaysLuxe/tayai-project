@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
@@ -20,16 +21,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add subscription_access_end_date column to users table."""
-    op.add_column(
-        'users',
-        sa.Column(
-            'subscription_access_end_date',
-            sa.DateTime(timezone=True),
-            nullable=True
-        )
-    )
+    # Be idempotent (fresh DBs created via SQLAlchemy models may already have this column).
+    op.execute(text(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_access_end_date TIMESTAMP WITH TIME ZONE"
+    ))
 
 
 def downgrade() -> None:
     """Remove subscription_access_end_date column from users table."""
-    op.drop_column('users', 'subscription_access_end_date')
+    op.execute(text("ALTER TABLE users DROP COLUMN IF EXISTS subscription_access_end_date"))

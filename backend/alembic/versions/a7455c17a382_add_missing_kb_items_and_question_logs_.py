@@ -80,12 +80,12 @@ def upgrade() -> None:
     """))
     
     # Create indexes if they don't exist
-    op.execute(text("""
-        CREATE INDEX IF NOT EXISTS ix_missing_kb_items_id ON missing_kb_items (id);
-        CREATE INDEX IF NOT EXISTS ix_missing_kb_items_user_id ON missing_kb_items (user_id);
-        CREATE INDEX IF NOT EXISTS ix_missing_kb_items_is_resolved ON missing_kb_items (is_resolved);
-        CREATE INDEX IF NOT EXISTS ix_missing_kb_items_created_at ON missing_kb_items (created_at);
-    """))
+    # NOTE: asyncpg commonly rejects multi-statement SQL in a single execute call,
+    # which can abort the transaction and cause confusing follow-on errors.
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_missing_kb_items_id ON missing_kb_items (id)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_missing_kb_items_user_id ON missing_kb_items (user_id)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_missing_kb_items_is_resolved ON missing_kb_items (is_resolved)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_missing_kb_items_created_at ON missing_kb_items (created_at)"))
     
     # Create question_logs table if it doesn't exist
     op.execute(text("""
@@ -142,16 +142,14 @@ def upgrade() -> None:
     """))
     
     # Create indexes if they don't exist
-    op.execute(text("""
-        CREATE INDEX IF NOT EXISTS ix_question_logs_id ON question_logs (id);
-        CREATE INDEX IF NOT EXISTS ix_question_logs_user_id ON question_logs (user_id);
-        CREATE INDEX IF NOT EXISTS ix_question_logs_question ON question_logs (question);
-        CREATE INDEX IF NOT EXISTS ix_question_logs_normalized_question ON question_logs (normalized_question);
-        CREATE INDEX IF NOT EXISTS ix_question_logs_context_type ON question_logs (context_type);
-        CREATE INDEX IF NOT EXISTS ix_question_logs_category ON question_logs (category);
-        CREATE INDEX IF NOT EXISTS ix_question_logs_user_tier ON question_logs (user_tier);
-        CREATE INDEX IF NOT EXISTS ix_question_logs_created_at ON question_logs (created_at);
-    """))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_question_logs_id ON question_logs (id)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_question_logs_user_id ON question_logs (user_id)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_question_logs_question ON question_logs (question)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_question_logs_normalized_question ON question_logs (normalized_question)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_question_logs_context_type ON question_logs (context_type)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_question_logs_category ON question_logs (category)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_question_logs_user_tier ON question_logs (user_tier)"))
+    op.execute(text("CREATE INDEX IF NOT EXISTS ix_question_logs_created_at ON question_logs (created_at)"))
 
 
 def downgrade() -> None:
