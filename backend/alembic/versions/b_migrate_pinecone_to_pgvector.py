@@ -20,36 +20,57 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema - add pgvector support."""
-    # Enable pgvector extension
-    # Note: CREATE EXTENSION requires superuser privileges in some PostgreSQL setups.
-    # This checks if the extension exists first, and handles permission errors gracefully.
-    op.execute(text("""
-        DO $$
-        BEGIN
-            -- Check if extension exists
-            IF NOT EXISTS (
-                SELECT 1 FROM pg_extension WHERE extname = 'vector'
-            ) THEN
-                -- Try to create extension (may fail if user lacks superuser privileges)
-                BEGIN
-                    CREATE EXTENSION IF NOT EXISTS vector;
-                EXCEPTION 
-                    WHEN insufficient_privilege THEN
-                        -- Extension creation requires superuser - assume admin will create it
-                        -- or that it's available via another mechanism
-                        RAISE NOTICE 'pgvector extension creation skipped: insufficient privileges. Extension may need to be created by database administrator.';
-                    WHEN OTHERS THEN
-                        -- Other errors (e.g., extension already exists from another session)
-                        -- are non-fatal - continue migration
-                        RAISE NOTICE 'pgvector extension creation encountered an error: %', SQLERRM;
-                END;
-            END IF;
-        END $$;
-    """))
-    
+    """Upgrade schema - add pgvector support if available.
+
+    On databases where the `vector` extension is not installed (e.g. managed
+    Postgres instances without pgvector), this migration will:
+    - still add the `knowledge_base.vector_id` column, but
+    - skip creating the `vector_embeddings` table and related indexes.
+    """
+    bind = op.get_bind()
+
+    # Always add vector_id column; it does not depend on pgvector.
+    op.execute(text("ALTER TABLE knowledge_base ADD COLUMN IF NOT EXISTS vector_id VARCHAR"))
+
+    # Detect whether pgvector is actually available on this server.
+    has_vector_extension = False
+    try:
+        result = bind.execute(
+            text("SELECT 1 FROM pg_available_extensions WHERE name = 'vector'")
+        )
+        has_vector_extension = result.scalar() is not None
+    except Exception:
+        # If we can't even query available extensions, assume it's not available.
+        has_vector_extension = False
+
+    if not has_vector_extension:
+        # Log a notice in the DB logs and skip vector-specific schema.
+        op.execute(
+            text(
+                "DO $$ BEGIN "
+                "RAISE NOTICE 'pgvector extension not available on this PostgreSQL instance; "
+                "skipping vector_embeddings table and indexes.'; "
+                "END $$;"
+            )
+        )
+        return
+
+    # Try to enable pgvector; if this fails (permissions, etc.), skip the vector schema.
+    try:
+        bind.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    except Exception:
+        op.execute(
+            text(
+                "DO $$ BEGIN "
+                "RAISE NOTICE 'CREATE EXTENSION vector failed; skipping vector_embeddings "
+                "table and indexes. Ensure pgvector is installed and extension can be created.'; "
+                "END $$;"
+            )
+        )
+        return
+
+    # At this point, pgvector should be installed; it's safe to reference type `vector`.
     # Create vector_embeddings table to store chunked embeddings
-    # Note: We use text() for the vector type since SQLAlchemy doesn't have native support
     op.execute(text("""
         CREATE TABLE IF NOT EXISTS vector_embeddings (
             id VARCHAR PRIMARY KEY,
@@ -65,7 +86,6 @@ def upgrade() -> None:
     """))
     
     # Create indexes for vector search
-    # Use IF NOT EXISTS to be safe if indexes already exist (e.g., created via create_all()).
     op.execute(text("CREATE INDEX IF NOT EXISTS ix_vector_embeddings_knowledge_base_id ON vector_embeddings (knowledge_base_id)"))
     op.execute(text("CREATE INDEX IF NOT EXISTS ix_vector_embeddings_namespace ON vector_embeddings (namespace)"))
     op.execute(text("CREATE INDEX IF NOT EXISTS ix_vector_embeddings_parent_id ON vector_embeddings (parent_id)"))
@@ -77,11 +97,6 @@ def upgrade() -> None:
         USING hnsw (embedding vector_cosine_ops)
         WITH (m = 16, ef_construction = 64)
     """))
-    
-    # Update knowledge_base table - rename pinecone_id to vector_id for clarity
-    # Note: We'll keep pinecone_id for now to avoid breaking existing code, but mark it as deprecated
-    # The migration will add a new vector_id column
-    op.execute(text("ALTER TABLE knowledge_base ADD COLUMN IF NOT EXISTS vector_id VARCHAR"))
 
 
 def downgrade() -> None:
