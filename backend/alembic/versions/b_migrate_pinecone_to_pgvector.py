@@ -20,61 +20,26 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema - add pgvector support."""
-    # Enable pgvector extension
-    op.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    
-    # Create vector_embeddings table to store chunked embeddings
-    # Note: We use text() for the vector type since SQLAlchemy doesn't have native support
-    op.execute(text("""
-        CREATE TABLE IF NOT EXISTS vector_embeddings (
-            id VARCHAR PRIMARY KEY,
-            knowledge_base_id INTEGER,
-            embedding vector(1536) NOT NULL,
-            content TEXT NOT NULL,
-            metadata JSONB,
-            namespace VARCHAR,
-            chunk_index INTEGER,
-            parent_id VARCHAR,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-    """))
-    
-    # Create indexes for vector search
-    # Use IF NOT EXISTS to be safe if indexes already exist (e.g., created via create_all()).
-    op.execute(text("CREATE INDEX IF NOT EXISTS ix_vector_embeddings_knowledge_base_id ON vector_embeddings (knowledge_base_id)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS ix_vector_embeddings_namespace ON vector_embeddings (namespace)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS ix_vector_embeddings_parent_id ON vector_embeddings (parent_id)"))
-    
-    # Create vector index for similarity search (using HNSW for performance)
-    op.execute(text("""
-        CREATE INDEX IF NOT EXISTS vector_embeddings_embedding_idx 
-        ON vector_embeddings 
-        USING hnsw (embedding vector_cosine_ops)
-        WITH (m = 16, ef_construction = 64)
-    """))
-    
-    # Update knowledge_base table - rename pinecone_id to vector_id for clarity
-    # Note: We'll keep pinecone_id for now to avoid breaking existing code, but mark it as deprecated
-    # The migration will add a new vector_id column
+    """Upgrade schema - non-breaking on databases without pgvector.
+
+    IMPORTANT:
+    - We DO NOT create the pgvector extension here.
+    - We DO NOT create the `vector_embeddings` table here.
+    - We ONLY add a plain `vector_id` column to `knowledge_base`.
+
+    This guarantees Alembic migrations never fail on hosts where the
+    `vector` extension is not installed (like your Railway Postgres).
+    A separate migration / manual step can be added later for true
+    pgvector support when running against a pgvector-enabled database.
+    """
     op.execute(text("ALTER TABLE knowledge_base ADD COLUMN IF NOT EXISTS vector_id VARCHAR"))
 
 
 def downgrade() -> None:
-    """Downgrade schema - remove pgvector support."""
-    # Drop vector index
-    op.execute(text("DROP INDEX IF EXISTS vector_embeddings_embedding_idx"))
-    
-    # Drop indexes
-    op.execute(text("DROP INDEX IF EXISTS ix_vector_embeddings_parent_id"))
-    op.execute(text("DROP INDEX IF EXISTS ix_vector_embeddings_namespace"))
-    op.execute(text("DROP INDEX IF EXISTS ix_vector_embeddings_knowledge_base_id"))
-    
-    # Drop vector_embeddings table
-    op.execute(text("DROP TABLE IF EXISTS vector_embeddings"))
-    
-    # Remove vector_id column from knowledge_base
+    """Downgrade schema - remove knowledge_base.vector_id."""
     op.execute(text("ALTER TABLE knowledge_base DROP COLUMN IF EXISTS vector_id"))
-    
-    # Note: We don't drop the vector extension as it might be used by other databases
+
+    # NOTE: We intentionally do NOT touch any pgvector objects here
+    # (extension, tables, indexes) to keep this migration safe on
+    # databases that don't have pgvector installed.
 
