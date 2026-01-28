@@ -102,3 +102,14 @@ class SSORequest(BaseModel):
     platform_token: str = Field(description="JWT or session token from membership platform")
     platform: str = Field(default="custom", description="Platform identifier (skool, custom)")
     email: Optional[EmailStr] = Field(None, description="User email (optional, can be extracted from token)")
+
+
+class OnboardingProfile(BaseModel):
+    """Onboarding profile data schema for user onboarding flow."""
+    user_name: Optional[str] = Field(None, description="User's preferred name")
+    business_type: Optional[str] = Field(None, description="Type of business (e.g., 'Hair Salon', 'Wig Business')")
+    focus: Optional[str] = Field(None, description="Main focus area")
+    primary_struggle: Optional[str] = Field(None, description="Primary challenge or struggle")
+    goals: Optional[str] = Field(None, description="User's goals")
+    experience_level: Optional[str] = Field(None, description="Experience level")
+    preferred_communication_style: Optional[str] = Field(None, description="Preferred communication style")

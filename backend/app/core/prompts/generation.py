@@ -16,15 +16,46 @@ def get_system_prompt(
     context_type: ConversationContext = ConversationContext.GENERAL,
     include_rag_instructions: bool = True,
     user_tier: Optional[str] = None,
-    kb_confidence: float = 1.0  # Confidence score from RAG
+    kb_confidence: float = 1.0,  # Confidence score from RAG
+    user_profile: Optional[dict] = None  # User onboarding profile data
 ) -> str:
     """
     Generate the system prompt for TayAI.
     
     Args:
         kb_confidence: RAG retrieval confidence (0-1). Below 0.75 triggers clarifying mode.
+        user_profile: User onboarding profile data (name, business_type, focus, etc.)
     """
     persona = persona or DEFAULT_PERSONA
+    
+    # Build user context section from profile
+    user_context_section = ""
+    if user_profile and user_profile.get("onboarding"):
+        onboarding = user_profile["onboarding"]
+        user_context_section = "\n## 👤 USER CONTEXT\n\n"
+        user_context_section += "Use this information to personalize your responses:\n\n"
+        
+        if onboarding.get("user_name"):
+            user_context_section += f"• **Name**: {onboarding['user_name']}\n"
+        if onboarding.get("business_type"):
+            user_context_section += f"• **Business Type**: {onboarding['business_type']}\n"
+        if onboarding.get("focus"):
+            user_context_section += f"• **Main Focus**: {onboarding['focus']}\n"
+        if onboarding.get("primary_struggle"):
+            user_context_section += f"• **Primary Challenge**: {onboarding['primary_struggle']}\n"
+        if onboarding.get("goals"):
+            user_context_section += f"• **Goals**: {onboarding['goals']}\n"
+        if onboarding.get("experience_level"):
+            user_context_section += f"• **Experience Level**: {onboarding['experience_level']}\n"
+        if onboarding.get("preferred_communication_style"):
+            user_context_section += f"• **Communication Style**: {onboarding['preferred_communication_style']}\n"
+        
+        user_context_section += "\n**Use this context to:**\n"
+        user_context_section += "• Address them by name when appropriate\n"
+        user_context_section += "• Tailor advice to their specific business type and focus\n"
+        user_context_section += "• Reference their goals and challenges when relevant\n"
+        user_context_section += "• Match their preferred communication style\n"
+        user_context_section += "• Provide context-appropriate guidance based on their experience level\n\n"
     
     # Build sections
     rules = _format_list_as_bullets(persona.core_rules)
@@ -167,6 +198,8 @@ DO NOT give a full generic answer. Instead:
     rag_section = _get_rag_instructions() if include_rag_instructions else ""
     
     return f"""# TAY AI - AUTHORITATIVE BUSINESS MENTOR
+
+{user_context_section}
 
 {vague_question_section}
 
