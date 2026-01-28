@@ -66,3 +66,31 @@ body {
 .cancel-animate {
   animation: cancel-pulse 1.5s ease-in-out infinite;
 }
+
+/* Voice waveform animation */
+@keyframes voice-waveform {
+  0%, 100% {
+    transform: scaleY(0.3);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.voice-waveform-bar {
+  animation: voice-waveform 1s ease-in-out infinite;
+}
+
+.voice-waveform-bar:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.voice-waveform-bar:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.voice-waveform-bar:nth-child(3) {
+  animation-delay: 0.4s;
+}

@@ -11,6 +11,8 @@ interface Message {
   content: string;
   sources?: Array<{ title: string; content: string }>;
   timestamp?: Date;
+  isVoice?: boolean;
+  voiceDuration?: string;
 }
 
 export default function ChatWidget() {
@@ -26,6 +28,10 @@ export default function ChatWidget() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
+  const [showVoiceChatEnded, setShowVoiceChatEnded] = useState(false);
+  const [voiceChatDuration, setVoiceChatDuration] = useState<string>('0s');
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -40,6 +46,23 @@ export default function ChatWidget() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openMenuIndex !== null) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.message-menu-container')) {
+          setOpenMenuIndex(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openMenuIndex]);
 
   // Cleanup for voice recognition
   useEffect(() => {
@@ -64,6 +87,36 @@ export default function ChatWidget() {
       hour12: true,
     });
   };
+
+  const handleCopyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+  };
+
+  const handleThumbsUp = (index: number) => {
+    // TODO: Implement feedback API call
+    console.log('Thumbs up for message', index);
+  };
+
+  const handleThumbsDown = (index: number) => {
+    // TODO: Implement feedback API call
+    console.log('Thumbs down for message', index);
+  };
+
+  const handleShare = (content: string) => {
+    if (navigator.share) {
+      navigator.share({ text: content });
+    } else {
+      handleCopyMessage(content);
+    }
+  };
+
+  const VoiceWaveformIcon = () => (
+    <div className="flex items-center gap-1 h-4">
+      <div className="w-0.5 bg-white rounded-full voice-waveform-bar" style={{ height: '8px' }}></div>
+      <div className="w-0.5 bg-white rounded-full voice-waveform-bar" style={{ height: '12px' }}></div>
+      <div className="w-0.5 bg-white rounded-full voice-waveform-bar" style={{ height: '8px' }}></div>
+    </div>
+  );
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,6 +300,19 @@ export default function ChatWidget() {
       }
       setIsRecording(false);
       setIsSpeaking(false);
+      
+      // Show voice chat ended notification
+      if (recordingStartTime) {
+        const duration = Math.floor((Date.now() - recordingStartTime) / 1000);
+        setVoiceChatDuration(`${duration}s`);
+        setShowVoiceChatEnded(true);
+        setRecordingStartTime(null);
+        
+        // Hide notification after 5 seconds
+        setTimeout(() => {
+          setShowVoiceChatEnded(false);
+        }, 5000);
+      }
       return;
     }
 
@@ -315,10 +381,12 @@ export default function ChatWidget() {
       recognition.start();
       recognitionRef.current = recognition;
       setIsRecording(true);
+      setRecordingStartTime(Date.now());
     } catch (err) {
       console.error('Failed to start speech recognition:', err);
       setError('Unable to start voice recording.');
       setIsRecording(false);
+      setRecordingStartTime(null);
     }
   };
 
@@ -375,6 +443,105 @@ export default function ChatWidget() {
                     <div className="bg-[#cba2ff] text-black rounded-2xl rounded-br-md px-4 py-3">
                       <p className="text-sm sm:text-base whitespace-pre-wrap">{message.content}</p>
                     </div>
+                    {/* Voice indicator for voice messages */}
+                    {message.isVoice && (
+                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-600 justify-end">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                        {message.voiceDuration && <span>{message.voiceDuration}</span>}
+                      </div>
+                    )}
+                    {/* Action Icons */}
+                    <div className="flex items-center gap-2 mt-2 justify-end">
+                      <button
+                        onClick={() => handleCopyMessage(message.content)}
+                        className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+                        title={t.chat.copy}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleThumbsUp(index)}
+                        className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+                        title={t.chat.thumbsUp}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleThumbsDown(index)}
+                        className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+                        title={t.chat.thumbsDown}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleShare(message.content)}
+                        className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+                        title={t.chat.share}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </button>
+                      <div className="relative message-menu-container">
+                        <button
+                          onClick={() => setOpenMenuIndex(openMenuIndex === index ? null : index)}
+                          className={`p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors ${
+                            openMenuIndex === index ? 'bg-[#242424] text-gray-300' : ''
+                          }`}
+                          title={t.chat.moreActions}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                        {openMenuIndex === index && (
+                          <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg py-1 min-w-[180px] z-50">
+                            <button
+                              onClick={() => {
+                                // TODO: Implement branch in new chat
+                                setOpenMenuIndex(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-[#242424] transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                              </svg>
+                              {t.chat.branchInNewChat}
+                            </button>
+                            <button
+                              onClick={() => {
+                                // TODO: Implement replay
+                                setOpenMenuIndex(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-[#242424] transition-colors"
+                            >
+                              <VoiceWaveformIcon />
+                              {t.chat.replay}
+                            </button>
+                            <button
+                              onClick={() => {
+                                // TODO: Implement report message
+                                setOpenMenuIndex(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-[#242424] transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                              </svg>
+                              {t.chat.reportMessage}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     {message.timestamp && (
                       <p className="text-xs text-gray-600 mt-1 text-right">
                         {formatTime(message.timestamp)}
@@ -404,6 +571,99 @@ export default function ChatWidget() {
                           </div>
                         </div>
                       )}
+                    </div>
+                    {/* Action Icons */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => handleCopyMessage(message.content)}
+                        className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+                        title={t.chat.copy}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleThumbsUp(index)}
+                        className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+                        title={t.chat.thumbsUp}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleThumbsDown(index)}
+                        className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+                        title={t.chat.thumbsDown}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleShare(message.content)}
+                        className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+                        title={t.chat.share}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </button>
+                      <div className="relative message-menu-container">
+                        <button
+                          onClick={() => setOpenMenuIndex(openMenuIndex === index ? null : index)}
+                          className={`p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors ${
+                            openMenuIndex === index ? 'bg-[#242424] text-gray-300' : ''
+                          }`}
+                          title={t.chat.moreActions}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+                        {openMenuIndex === index && (
+                          <div className="absolute left-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg py-1 min-w-[180px] z-50">
+                            <div className="px-4 py-2 text-xs text-gray-500 border-b border-[#2a2a2a]">
+                              {message.timestamp && formatTime(message.timestamp)}
+                            </div>
+                            <button
+                              onClick={() => {
+                                // TODO: Implement branch in new chat
+                                setOpenMenuIndex(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-[#242424] transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                              </svg>
+                              {t.chat.branchInNewChat}
+                            </button>
+                            <button
+                              onClick={() => {
+                                // TODO: Implement replay
+                                setOpenMenuIndex(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-[#242424] transition-colors"
+                            >
+                              <VoiceWaveformIcon />
+                              {t.chat.replay}
+                            </button>
+                            <button
+                              onClick={() => {
+                                // TODO: Implement report message
+                                setOpenMenuIndex(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-[#242424] transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                              </svg>
+                              {t.chat.reportMessage}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {message.timestamp && (
                       <p className="text-xs text-gray-600 mt-1">
@@ -439,6 +699,46 @@ export default function ChatWidget() {
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* Voice Chat Ended Notification */}
+      {showVoiceChatEnded && (
+        <div className="fixed bottom-20 right-4 z-50 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 shadow-lg flex items-center gap-3 animate-in slide-in-from-bottom-2">
+          <VoiceWaveformIcon />
+          <div className="flex-1">
+            <p className="text-sm text-gray-300">{t.chat.voiceChatEnded}</p>
+            <p className="text-xs text-gray-500">{voiceChatDuration}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleThumbsUp(messages.length)}
+              className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+              title={t.chat.thumbsUp}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+              </svg>
+            </button>
+            <button
+              onClick={() => handleThumbsDown(messages.length)}
+              className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+              title={t.chat.thumbsDown}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowVoiceChatEnded(false)}
+              className="p-1.5 text-gray-400 hover:text-gray-300 hover:bg-[#242424] rounded transition-colors"
+              title="Close"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Input Area */}
       <div className="relative z-10 border-t border-[#2a2a2a] bg-[#1a1a1a] px-4 sm:px-6 py-4">
