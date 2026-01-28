@@ -31,8 +31,20 @@ AsyncSessionLocal = async_sessionmaker(
 Base = declarative_base()
 
 def _get_backend_dir() -> Path:
-    # .../backend/app/db/database.py -> .../backend
-    return Path(__file__).resolve().parents[3]
+    """
+    Locate the backend root directory that contains alembic.ini.
+
+    Works both in local dev (../backend) and in the deployed container (/app).
+    """
+    path = Path(__file__).resolve()
+    for candidate in [path] + list(path.parents):
+        if (candidate / "alembic.ini").exists():
+            return candidate
+
+    # Fallback: two levels up (../..) is backend in local dev and /app in prod.
+    fallback = path.parents[2]
+    logger.warning("Could not find alembic.ini; falling back backend_dir=%s", fallback)
+    return fallback
 
 
 def _get_alembic_head_revision() -> str:
@@ -67,7 +79,19 @@ def _ensure_alembic_version_table(sync_conn: sa.Connection) -> None:
     """
     inspector = sa.inspect(sync_conn)
     table_names = set(inspector.get_table_names())
-    head = _get_alembic_head_revision()
+
+    try:
+        head = _get_alembic_head_revision()
+    except Exception as e:
+        # In environments where Alembic scripts are not available (e.g. some
+        # seeding/one-off jobs), don't crash app startup. Migrations are run
+        # separately via run_migrations.py, which will maintain alembic_version.
+        logger.warning(
+            "Skipping alembic_version stamping in init_db because Alembic "
+            "head revision could not be determined: %s",
+            e,
+        )
+        return
 
     if "alembic_version" not in table_names:
         sync_conn.execute(
