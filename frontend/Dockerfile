@@ -29,6 +29,13 @@ COPY . .
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
 
+
+# Debug info (temporary)
+RUN node -v && npm -v
+RUN echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL"
+RUN echo "NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL"
+
+
 # Build the Next.js application
 RUN npm run build
 
