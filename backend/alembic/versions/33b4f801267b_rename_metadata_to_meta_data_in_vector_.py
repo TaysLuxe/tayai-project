@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
@@ -22,9 +23,35 @@ def upgrade() -> None:
     """Upgrade schema - rename metadata column to meta_data."""
     # Rename metadata to meta_data to match SQLAlchemy model
     # (metadata is a reserved word in SQLAlchemy)
-    op.execute("ALTER TABLE vector_embeddings RENAME COLUMN metadata TO meta_data")
+    op.execute(text("""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'vector_embeddings' AND column_name = 'metadata'
+            ) AND NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'vector_embeddings' AND column_name = 'meta_data'
+            ) THEN
+                ALTER TABLE vector_embeddings RENAME COLUMN metadata TO meta_data;
+            END IF;
+        END $$;
+    """))
 
 
 def downgrade() -> None:
     """Downgrade schema - rename meta_data column back to metadata."""
-    op.execute("ALTER TABLE vector_embeddings RENAME COLUMN meta_data TO metadata")
+    op.execute(text("""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'vector_embeddings' AND column_name = 'meta_data'
+            ) AND NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'vector_embeddings' AND column_name = 'metadata'
+            ) THEN
+                ALTER TABLE vector_embeddings RENAME COLUMN meta_data TO metadata;
+            END IF;
+        END $$;
+    """))
