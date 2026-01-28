@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
@@ -19,52 +20,138 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
-    # Create missing_kb_items table
-    op.create_table(
-        'missing_kb_items',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('question', sa.Text(), nullable=False),
-        sa.Column('missing_detail', sa.Text(), nullable=False),
-        sa.Column('ai_response_preview', sa.Text(), nullable=True),
-        sa.Column('suggested_namespace', sa.String(), nullable=True),
-        sa.Column('is_resolved', sa.Boolean(), nullable=True, server_default='false'),
-        sa.Column('resolved_at', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('resolved_by_kb_id', sa.Integer(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-        sa.Column('metadata', sa.JSON(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_missing_kb_items_id'), 'missing_kb_items', ['id'], unique=False)
-    op.create_index(op.f('ix_missing_kb_items_user_id'), 'missing_kb_items', ['user_id'], unique=False)
-    op.create_index(op.f('ix_missing_kb_items_is_resolved'), 'missing_kb_items', ['is_resolved'], unique=False)
-    op.create_index(op.f('ix_missing_kb_items_created_at'), 'missing_kb_items', ['created_at'], unique=False)
-
-    # Create question_logs table
-    op.create_table(
-        'question_logs',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('question', sa.Text(), nullable=False),
-        sa.Column('normalized_question', sa.String(), nullable=True),
-        sa.Column('context_type', sa.String(), nullable=True),
-        sa.Column('category', sa.String(), nullable=True),
-        sa.Column('user_tier', sa.String(), nullable=True),
-        sa.Column('tokens_used', sa.Integer(), nullable=True, server_default='0'),
-        sa.Column('has_sources', sa.Boolean(), nullable=True, server_default='false'),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-        sa.Column('metadata', sa.JSON(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_question_logs_id'), 'question_logs', ['id'], unique=False)
-    op.create_index(op.f('ix_question_logs_user_id'), 'question_logs', ['user_id'], unique=False)
-    op.create_index(op.f('ix_question_logs_question'), 'question_logs', ['question'], unique=False)
-    op.create_index(op.f('ix_question_logs_normalized_question'), 'question_logs', ['normalized_question'], unique=False)
-    op.create_index(op.f('ix_question_logs_context_type'), 'question_logs', ['context_type'], unique=False)
-    op.create_index(op.f('ix_question_logs_category'), 'question_logs', ['category'], unique=False)
-    op.create_index(op.f('ix_question_logs_user_tier'), 'question_logs', ['user_tier'], unique=False)
-    op.create_index(op.f('ix_question_logs_created_at'), 'question_logs', ['created_at'], unique=False)
+    """Upgrade schema - idempotent migration using raw SQL with IF NOT EXISTS."""
+    
+    # Use raw SQL with IF NOT EXISTS to handle existing tables gracefully
+    # This approach works even if tables already exist and doesn't require transaction rollback
+    
+    # Create missing_kb_items table if it doesn't exist
+    op.execute(text("""
+        CREATE TABLE IF NOT EXISTS missing_kb_items (
+            id SERIAL NOT NULL,
+            user_id INTEGER NOT NULL,
+            question TEXT NOT NULL,
+            missing_detail TEXT NOT NULL,
+            ai_response_preview TEXT,
+            suggested_namespace VARCHAR,
+            is_resolved BOOLEAN DEFAULT 'false',
+            resolved_at TIMESTAMP WITH TIME ZONE,
+            resolved_by_kb_id INTEGER,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            extra_metadata JSON,
+            PRIMARY KEY (id)
+        )
+    """))
+    
+    # Handle column rename/add if needed (legacy support)
+    op.execute(text("""
+        DO $$
+        BEGIN
+            -- Rename metadata to extra_metadata if it exists
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'missing_kb_items' 
+                AND column_name = 'metadata'
+                AND NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'missing_kb_items' 
+                    AND column_name = 'extra_metadata'
+                )
+            ) THEN
+                ALTER TABLE missing_kb_items RENAME COLUMN metadata TO extra_metadata;
+            END IF;
+            
+            -- Add extra_metadata column if table exists but column doesn't
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_name = 'missing_kb_items'
+            ) AND NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'missing_kb_items' 
+                AND column_name = 'extra_metadata'
+            ) AND NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'missing_kb_items' 
+                AND column_name = 'metadata'
+            ) THEN
+                ALTER TABLE missing_kb_items ADD COLUMN extra_metadata JSON;
+            END IF;
+        END $$;
+    """))
+    
+    # Create indexes if they don't exist
+    op.execute(text("""
+        CREATE INDEX IF NOT EXISTS ix_missing_kb_items_id ON missing_kb_items (id);
+        CREATE INDEX IF NOT EXISTS ix_missing_kb_items_user_id ON missing_kb_items (user_id);
+        CREATE INDEX IF NOT EXISTS ix_missing_kb_items_is_resolved ON missing_kb_items (is_resolved);
+        CREATE INDEX IF NOT EXISTS ix_missing_kb_items_created_at ON missing_kb_items (created_at);
+    """))
+    
+    # Create question_logs table if it doesn't exist
+    op.execute(text("""
+        CREATE TABLE IF NOT EXISTS question_logs (
+            id SERIAL NOT NULL,
+            user_id INTEGER NOT NULL,
+            question TEXT NOT NULL,
+            normalized_question VARCHAR,
+            context_type VARCHAR,
+            category VARCHAR,
+            user_tier VARCHAR,
+            tokens_used INTEGER DEFAULT 0,
+            has_sources BOOLEAN DEFAULT 'false',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            extra_metadata JSON,
+            PRIMARY KEY (id)
+        )
+    """))
+    
+    # Handle column rename/add if needed (legacy support)
+    op.execute(text("""
+        DO $$
+        BEGIN
+            -- Rename metadata to extra_metadata if it exists
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'question_logs' 
+                AND column_name = 'metadata'
+                AND NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'question_logs' 
+                    AND column_name = 'extra_metadata'
+                )
+            ) THEN
+                ALTER TABLE question_logs RENAME COLUMN metadata TO extra_metadata;
+            END IF;
+            
+            -- Add extra_metadata column if table exists but column doesn't
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_name = 'question_logs'
+            ) AND NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'question_logs' 
+                AND column_name = 'extra_metadata'
+            ) AND NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'question_logs' 
+                AND column_name = 'metadata'
+            ) THEN
+                ALTER TABLE question_logs ADD COLUMN extra_metadata JSON;
+            END IF;
+        END $$;
+    """))
+    
+    # Create indexes if they don't exist
+    op.execute(text("""
+        CREATE INDEX IF NOT EXISTS ix_question_logs_id ON question_logs (id);
+        CREATE INDEX IF NOT EXISTS ix_question_logs_user_id ON question_logs (user_id);
+        CREATE INDEX IF NOT EXISTS ix_question_logs_question ON question_logs (question);
+        CREATE INDEX IF NOT EXISTS ix_question_logs_normalized_question ON question_logs (normalized_question);
+        CREATE INDEX IF NOT EXISTS ix_question_logs_context_type ON question_logs (context_type);
+        CREATE INDEX IF NOT EXISTS ix_question_logs_category ON question_logs (category);
+        CREATE INDEX IF NOT EXISTS ix_question_logs_user_tier ON question_logs (user_tier);
+        CREATE INDEX IF NOT EXISTS ix_question_logs_created_at ON question_logs (created_at);
+    """))
 
 
 def downgrade() -> None:
