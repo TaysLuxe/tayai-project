@@ -22,7 +22,31 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema - add pgvector support."""
     # Enable pgvector extension
-    op.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    # Note: CREATE EXTENSION requires superuser privileges in some PostgreSQL setups.
+    # This checks if the extension exists first, and handles permission errors gracefully.
+    op.execute(text("""
+        DO $$
+        BEGIN
+            -- Check if extension exists
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_extension WHERE extname = 'vector'
+            ) THEN
+                -- Try to create extension (may fail if user lacks superuser privileges)
+                BEGIN
+                    CREATE EXTENSION IF NOT EXISTS vector;
+                EXCEPTION 
+                    WHEN insufficient_privilege THEN
+                        -- Extension creation requires superuser - assume admin will create it
+                        -- or that it's available via another mechanism
+                        RAISE NOTICE 'pgvector extension creation skipped: insufficient privileges. Extension may need to be created by database administrator.';
+                    WHEN OTHERS THEN
+                        -- Other errors (e.g., extension already exists from another session)
+                        -- are non-fatal - continue migration
+                        RAISE NOTICE 'pgvector extension creation encountered an error: %', SQLERRM;
+                END;
+            END IF;
+        END $$;
+    """))
     
     # Create vector_embeddings table to store chunked embeddings
     # Note: We use text() for the vector type since SQLAlchemy doesn't have native support
