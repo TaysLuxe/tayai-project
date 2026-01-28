@@ -165,10 +165,6 @@ class Settings(BaseSettings):
     )
     # BASIC tier ($37) gets 3 weeks access
     BASIC_TIER_ACCESS_DAYS: int = int(os.getenv("BASIC_TIER_ACCESS_DAYS", "21"))  # 3 weeks
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
 settings = Settings()
