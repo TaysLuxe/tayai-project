@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import ChatWidget from '@/components/ChatWidget';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -15,6 +16,7 @@ interface ChatSession {
 
 export default function Dashboard() {
   const { isAuthenticated, logout, user, loading } = useAuth();
+  const { language, setLanguage, t, languageCodes } = useLanguage();
   const router = useRouter();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -32,6 +34,46 @@ export default function Dashboard() {
   const [helpMenuPosition, setHelpMenuPosition] = useState({ top: 0, left: 0 });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+  const [selectedChatTitle, setSelectedChatTitle] = useState<string>(t.dashboard.yourChats);
+  
+  // Settings state
+  const [appearance, setAppearance] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tayai_appearance') || 'system';
+    }
+    return 'system';
+  });
+  const [accentColor, setAccentColor] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tayai_accent_color') || 'default';
+    }
+    return 'default';
+  });
+  const [spokenLanguage, setSpokenLanguage] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tayai_spoken_language') || 'auto-detect';
+    }
+    return 'auto-detect';
+  });
+  const [voice, setVoice] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tayai_voice') || 'vale';
+    }
+    return 'vale';
+  });
+  const [separateVoice, setSeparateVoice] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tayai_separate_voice') === 'true';
+    }
+    return false;
+  });
+  const [showAdditionalModels, setShowAdditionalModels] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tayai_show_additional_models') === 'true';
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -68,19 +110,24 @@ export default function Dashboard() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('[data-dropdown]') && !target.closest('[data-user-menu]')) {
+      if (
+        !target.closest('[data-dropdown]') &&
+        !target.closest('[data-user-menu]') &&
+        !target.closest('[data-history-dropdown]')
+      ) {
         setShowLanguageMenu(false);
         setShowLearnMoreMenu(false);
         setShowHelpMenu(false);
         setShowUserMenu(false);
+        setShowHistoryDropdown(false);
       }
     };
 
-    if (showLanguageMenu || showLearnMoreMenu || showHelpMenu || showUserMenu) {
+    if (showLanguageMenu || showLearnMoreMenu || showHelpMenu || showUserMenu || showHistoryDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showLanguageMenu, showLearnMoreMenu, showHelpMenu, showUserMenu]);
+  }, [showLanguageMenu, showLearnMoreMenu, showHelpMenu, showUserMenu, showHistoryDropdown]);
 
   // Close settings modal on Escape key
   useEffect(() => {
@@ -130,6 +177,8 @@ export default function Dashboard() {
 
     setChatSessionId(nextId);
     setChatHistory((prev) => [newSession, ...prev]);
+    setSelectedChatTitle(newSession.title);
+    setShowHistoryDropdown(false);
   };
 
   const filteredHistory = useMemo(() => {
@@ -143,7 +192,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-screen bg-[#0f0f0f]">
         <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
-          <p className="mt-4 text-gray-400 text-sm">Loading...</p>
+          <p className="mt-4 text-gray-400 text-sm">{t.common.loading}</p>
         </div>
       </div>
     );
@@ -204,7 +253,7 @@ export default function Dashboard() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            New Chat
+            {t.dashboard.newChat}
           </button>
 
           {/* Search chats */}
@@ -221,19 +270,19 @@ export default function Dashboard() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search chats"
+              placeholder={t.dashboard.searchChats}
               className="w-full pl-9 pr-3 py-2 text-xs bg-[#242424] border border-[#2a2a2a] rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#cba2ff]/70 focus:border-[#cba2ff]"
             />
           </div>
 
           {/* Projects */}
           <div className="space-y-1">
-            <p className="text-[11px] uppercase tracking-wide text-gray-500">Projects</p>
+            <p className="text-[11px] uppercase tracking-wide text-gray-500">{t.dashboard.projects}</p>
             <button className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-200 bg-[#242424] rounded-md hover:bg-[#2a2a2a] transition-colors">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-[#cba2ff]/15 text-[#cba2ff] text-[11px]">
                 TA
               </span>
-              <span className="truncate">TayAI - Default workspace</span>
+              <span className="truncate">{t.dashboard.tayAIWorkspace}</span>
             </button>
           </div>
         </div>
@@ -254,31 +303,48 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Chat history */}
+      {/* Chat history - compact dropdown style */}
       {!isSidebarCollapsed && (
         <div className="flex-1 overflow-y-auto p-4">
-          <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-2">Chat history</p>
-          {filteredHistory.length === 0 ? (
-            <p className="text-xs text-gray-600">No chats yet. Start a new conversation.</p>
-          ) : (
-            <ul className="space-y-1">
-              {filteredHistory.map((session) => (
-                <li
-                  key={session.id}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-[#242424] cursor-default"
-                >
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-[#242424] text-[11px] text-gray-400">
-                    💬
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs text-gray-200 truncate">{session.title}</p>
-                    <p className="text-[10px] text-gray-500">
-                      {session.createdAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+          <div className="relative mb-2" data-history-dropdown>
+            <button
+              onClick={() => setShowHistoryDropdown((prev) => !prev)}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs bg-[#242424] border border-[#2a2a2a] rounded-md text-gray-200 hover:border-[#cba2ff]/70 focus:outline-none focus:ring-1 focus:ring-[#cba2ff]/70"
+            >
+              <span className="truncate">
+                {filteredHistory.length === 0 ? t.dashboard.yourChats : selectedChatTitle || t.dashboard.yourChats}
+              </span>
+              <svg
+                className={`w-3 h-3 text-gray-400 ml-2 transition-transform ${showHistoryDropdown ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showHistoryDropdown && filteredHistory.length > 0 && (
+              <div className="absolute mt-1 w-full bg-[#111111] border border-[#2a2a2a] rounded-md shadow-xl z-20 max-h-56 overflow-y-auto">
+                {filteredHistory.map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => {
+                      setSelectedChatTitle(session.title);
+                      setChatSessionId(session.id);
+                      setShowHistoryDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-[#242424] truncate"
+                  >
+                    {session.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {filteredHistory.length === 0 && (
+            <p className="text-xs text-gray-600 mt-2">{t.dashboard.noChatsYet}</p>
           )}
         </div>
       )}
@@ -313,7 +379,7 @@ export default function Dashboard() {
                     />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span>Settings</span>
+                  <span>{t.common.settings}</span>
                 </div>
                 <span className="text-xs text-gray-500 group-hover:text-gray-400">⇧⌘,</span>
               </button>
@@ -338,7 +404,7 @@ export default function Dashboard() {
                         d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
                       />
                     </svg>
-                    <span>Language</span>
+                    <span>{t.common.language}</span>
                   </div>
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -349,28 +415,29 @@ export default function Dashboard() {
                 {showLanguageMenu && (
                   <div className="absolute right-0 bottom-full mb-1 w-56 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
                     <div className="py-1">
-                      {[
-                        'English',
-                        'Français',
-                        'Nederlands',
-                        'Español',
-                        'Português',
-                      ].map((lang, idx) => (
-                        <button
-                          key={idx}
-                          className={`w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#242424] flex items-center justify-between ${
-                            idx === 0 ? 'bg-[#242424]' : ''
-                          }`}
-                          onClick={() => setShowLanguageMenu(false)}
-                        >
-                          <span>{lang}</span>
-                          {idx === 0 && (
-                            <svg className="w-4 h-4 text-[#cba2ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-                      ))}
+                      {['English', 'Français', 'Nederlands', 'Español', 'Português'].map((langName) => {
+                        const langCode = languageCodes[langName];
+                        const isSelected = language === langCode;
+                        return (
+                          <button
+                            key={langCode}
+                            className={`w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#242424] flex items-center justify-between ${
+                              isSelected ? 'bg-[#242424]' : ''
+                            }`}
+                            onClick={() => {
+                              setLanguage(langCode);
+                              setShowLanguageMenu(false);
+                            }}
+                          >
+                            <span>{langName}</span>
+                            {isSelected && (
+                              <svg className="w-4 h-4 text-[#cba2ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -405,7 +472,7 @@ export default function Dashboard() {
                         d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <span>Get help</span>
+                    <span>{t.dashboard.getHelp}</span>
                   </div>
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -430,7 +497,7 @@ export default function Dashboard() {
                       <div className="py-1">
                         {[
                           {
-                            label: 'Help center',
+                            label: t.dashboard.helpCenter,
                             icon: (
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -438,7 +505,7 @@ export default function Dashboard() {
                             ),
                           },
                           {
-                            label: 'Release notes',
+                            label: t.dashboard.releaseNotes,
                             icon: (
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -446,7 +513,7 @@ export default function Dashboard() {
                             ),
                           },
                           {
-                            label: 'Terms & policies',
+                            label: t.dashboard.termsPolicies,
                             icon: (
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -454,23 +521,7 @@ export default function Dashboard() {
                             ),
                           },
                           {
-                            label: 'Report Bug',
-                            icon: (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                              </svg>
-                            ),
-                          },
-                          {
-                            label: 'Download apps',
-                            icon: (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                              </svg>
-                            ),
-                          },
-                          {
-                            label: 'Keyboard shortcuts',
+                            label: t.dashboard.keyboardShortcuts,
                             icon: (
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -513,7 +564,7 @@ export default function Dashboard() {
                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <span>Learn more</span>
+                    <span>{t.dashboard.learnMore}</span>
                   </div>
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -525,13 +576,10 @@ export default function Dashboard() {
                   <div className="absolute right-0 bottom-full mb-1 w-56 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl z-50">
                     <div className="py-1">
                       {[
-                        { label: 'API Console', external: true },
-                        { label: 'About TayAI', external: true },
+                        { label: t.dashboard.aboutTayAI, external: true },
                         { label: 'divider' },
-                        { label: 'Usage policy', external: true },
-                        { label: 'Privacy policy', external: true },
-                        { label: 'Your privacy choices' },
-                        { label: 'Keyboard shortcuts', shortcut: '⌘/' },
+                        { label: t.dashboard.usagePolicy, external: true },
+                        { label: t.dashboard.keyboardShortcuts, shortcut: '⌘/' },
                       ].map((item, idx) => {
                         if (item.label === 'divider') {
                           return <div key={idx} className="h-px bg-[#2a2a2a] my-1"></div>;
@@ -566,7 +614,10 @@ export default function Dashboard() {
 
               {/* Log out */}
               <button
-                onClick={logout}
+                onClick={() => {
+                  logout();
+                  router.push('/login');
+                }}
                 className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-300 hover:bg-[#242424] rounded-md transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -577,7 +628,7 @@ export default function Dashboard() {
                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                   />
                 </svg>
-                <span>Log out</span>
+                <span>{t.common.logout}</span>
               </button>
             </div>
           </>
@@ -721,25 +772,46 @@ export default function Dashboard() {
 
             {/* Title & Status */}
             <div>
-              <h1 className="text-md font-medium text-white">Chat with TayAI</h1>
+              <h1 className="text-md font-medium text-white">{t.dashboard.chatWithTayAI}</h1>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span className="text-sm text-gray-500">Online</span>
+                <span className="text-sm text-gray-500">{t.common.online}</span>
               </div>
             </div>
           </div>
 
-          {/* Mobile user info */}
-          <div className="md:hidden flex items-center gap-2">
-            <div className="relative flex items-center justify-center">
-              <div className="absolute w-12 h-12 rounded-full bg-[#cba2ff]/5"></div>
-              <div className="absolute w-10 h-10 rounded-full bg-[#cba2ff]/10"></div>
-              <div className="relative w-8 h-8 rounded-full bg-[#cba2ff] flex items-center justify-center">
-                <span className="text-black font-semibold text-xs">
-                  {user?.username?.charAt(0).toUpperCase()}
-                </span>
+          {/* Right-side actions */}
+          <div className="flex items-center gap-3">
+            {/* Mobile user info */}
+            <div className="md:hidden flex items-center gap-2">
+              <div className="relative flex items-center justify-center">
+                <div className="absolute w-12 h-12 rounded-full bg-[#cba2ff]/5"></div>
+                <div className="absolute w-10 h-10 rounded-full bg-[#cba2ff]/10"></div>
+                <div className="relative w-8 h-8 rounded-full bg-[#cba2ff] flex items-center justify-center">
+                  <span className="text-black font-semibold text-xs">
+                    {user?.username?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* Global Settings button (always opens modal) */}
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#242424] transition-colors"
+              title="Settings"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="text-sm">{t.common.settings}</span>
+            </button>
           </div>
         </header>
 
@@ -772,7 +844,7 @@ export default function Dashboard() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-                  <h2 className="text-lg font-semibold text-white">Settings</h2>
+                  <h2 className="text-lg font-semibold text-white">{t.common.settings}</h2>
                 </div>
               </div>
 
@@ -782,14 +854,52 @@ export default function Dashboard() {
                 <div className="w-64 border-r border-[#2a2a2a] overflow-y-auto">
                   <nav className="p-2 space-y-1">
                     {[
-                      { id: 'general', label: 'General', icon: '⚙️' },
-                      { id: 'notifications', label: 'Notifications', icon: '🔔' },
-                      { id: 'personalization', label: 'Personalization', icon: '🎨' },
-                      { id: 'apps', label: 'Apps', icon: '📱' },
-                      { id: 'schedules', label: 'Schedules', icon: '⏰' },
-                      { id: 'data', label: 'Data controls', icon: '💾' },
-                      { id: 'security', label: 'Security', icon: '🔒' },
-                      { id: 'account', label: 'Account', icon: '👤' },
+                      { 
+                        id: 'general', 
+                        label: t.settings.general, 
+                        icon: (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        )
+                      },
+                      { 
+                        id: 'notifications', 
+                        label: t.settings.notifications, 
+                        icon: (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                          </svg>
+                        )
+                      },
+                      { 
+                        id: 'personalization', 
+                        label: t.settings.personalization, 
+                        icon: (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                          </svg>
+                        )
+                      },
+                      { 
+                        id: 'schedules', 
+                        label: t.settings.schedules, 
+                        icon: (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )
+                      },
+                      { 
+                        id: 'account', 
+                        label: t.settings.account, 
+                        icon: (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        )
+                      },
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -800,7 +910,7 @@ export default function Dashboard() {
                             : 'text-gray-300 hover:bg-[#242424]'
                         }`}
                       >
-                        <span className="text-base">{item.icon}</span>
+                        <span className="flex items-center text-white">{item.icon}</span>
                         <span>{item.label}</span>
                       </button>
                     ))}
@@ -810,53 +920,122 @@ export default function Dashboard() {
                 {/* Right Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                   {settingsCategory === 'general' && (
-                    <div className="space-y-6">
-                      <h3 className="text-xl font-semibold text-white mb-6">General</h3>
+                    <div className="space-y-0">
+                      <h3 className="text-xl font-semibold text-white mb-4">{t.settings.general}</h3>
+                      
+                      {/* Divider */}
+                      <div className="h-px bg-[#2a2a2a] mb-0"></div>
                       
                       {/* Appearance */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Appearance</label>
-                        <select className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
-                          <option>System</option>
-                          <option>Light</option>
-                          <option>Dark</option>
+                      <div className="flex items-center justify-between py-3 border-b border-[#2a2a2a]">
+                        <label className="text-sm font-medium text-gray-300">{t.settings.appearance}</label>
+                        <select 
+                          value={appearance}
+                          onChange={(e) => {
+                            setAppearance(e.target.value);
+                            localStorage.setItem('tayai_appearance', e.target.value);
+                          }}
+                          className="px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
+                        >
+                          <option value="system">{t.settings.system}</option>
+                          <option value="light">{t.settings.light}</option>
+                          <option value="dark">{t.settings.dark}</option>
                         </select>
                       </div>
 
                       {/* Accent color */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Accent color</label>
-                        <select className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
-                          <option>Default</option>
-                          <option>Purple</option>
-                          <option>Blue</option>
-                          <option>Green</option>
+                      <div className="flex items-center justify-between py-3 border-b border-[#2a2a2a]">
+                        <label className="text-sm font-medium text-gray-300">{t.settings.accentColor}</label>
+                        <select 
+                          value={accentColor}
+                          onChange={(e) => {
+                            setAccentColor(e.target.value);
+                            localStorage.setItem('tayai_accent_color', e.target.value);
+                          }}
+                          className="px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
+                        >
+                          <option value="default">{t.settings.default}</option>
+                          <option value="purple">{t.settings.purple}</option>
+                          <option value="blue">{t.settings.blue}</option>
+                          <option value="green">{t.settings.green}</option>
+                          <option value="yellow">Yellow</option>
+                          <option value="pink">Pink</option>
+                          <option value="orange">Orange</option>
                         </select>
                       </div>
 
                       {/* Language */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Language</label>
-                        <select className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
-                          <option>Auto-detect</option>
-                          <option>English</option>
-                          <option>Français</option>
-                          <option>Nederlands</option>
-                          <option>Español</option>
-                          <option>Português</option>
+                      <div className="flex items-center justify-between py-3 border-b border-[#2a2a2a]">
+                        <label className="text-sm font-medium text-gray-300">{t.common.language}</label>
+                        <select 
+                          className="px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
+                          value={language}
+                          onChange={(e) => setLanguage(e.target.value as Language)}
+                        >
+                          <option value="en">English</option>
+                          <option value="fr">Français</option>
+                          <option value="nl">Nederlands</option>
+                          <option value="es">Español</option>
+                          <option value="pt">Português</option>
                         </select>
                       </div>
 
                       {/* Spoken language */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Spoken language</label>
-                        <select className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
-                          <option>Auto-detect</option>
-                          <option>English</option>
-                          <option>Français</option>
-                          <option>Nederlands</option>
-                          <option>Español</option>
-                          <option>Português</option>
+                        <label className="text-sm font-medium text-gray-300">{t.settings.spokenLanguage}</label>
+                        <select 
+                          value={spokenLanguage}
+                          onChange={(e) => {
+                            setSpokenLanguage(e.target.value);
+                            localStorage.setItem('tayai_spoken_language', e.target.value);
+                          }}
+                          className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
+                        >
+                          <option value="auto-detect">{t.settings.autoDetect}</option>
+                          <option value="akk">Akkadian</option>
+                          <option value="am">አማርኛ</option>
+                          <option value="ar">العربية</option>
+                          <option value="bg">български</option>
+                          <option value="bn">বাংলা</option>
+                          <option value="bs">bosanski</option>
+                          <option value="ca">català</option>
+                          <option value="cs">čeština</option>
+                          <option value="da">dansk</option>
+                          <option value="de">Deutsch</option>
+                          <option value="el">Ελληνικά</option>
+                          <option value="es-419">español (Latinoamérica)</option>
+                          <option value="es-ES">español (España)</option>
+                          <option value="es">Español</option>
+                          <option value="fr">Français</option>
+                          <option value="hi">हिन्दी</option>
+                          <option value="hr">hrvatski</option>
+                          <option value="hu">magyar</option>
+                          <option value="id">Bahasa Indonesia</option>
+                          <option value="it">italiano</option>
+                          <option value="ja">日本語</option>
+                          <option value="ko">한국어</option>
+                          <option value="ms">Bahasa Melayu</option>
+                          <option value="nl">Nederlands</option>
+                          <option value="no">norsk</option>
+                          <option value="pl">polski</option>
+                          <option value="pt-BR">português (Brasil)</option>
+                          <option value="pt-PT">português (Portugal)</option>
+                          <option value="pt">Português</option>
+                          <option value="ro">română</option>
+                          <option value="ru">русский</option>
+                          <option value="sk">slovenčina</option>
+                          <option value="sl">slovenščina</option>
+                          <option value="sr">српски</option>
+                          <option value="sv">svenska</option>
+                          <option value="sw">Kiswahili</option>
+                          <option value="ta">தமிழ்</option>
+                          <option value="th">ไทย</option>
+                          <option value="tr">Türkçe</option>
+                          <option value="uk">українська</option>
+                          <option value="ur">اردو</option>
+                          <option value="vi">Tiếng Việt</option>
+                          <option value="zh-CN">中文 (简体)</option>
+                          <option value="zh-TW">中文 (繁體)</option>
                         </select>
                         <p className="text-xs text-gray-500">
                           For best results, select the language you mainly speak. If it&apos;s not listed, it may still be supported via auto-detection.
@@ -865,20 +1044,33 @@ export default function Dashboard() {
 
                       {/* Voice */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Voice</label>
+                        <label className="text-sm font-medium text-gray-300">{t.settings.voice}</label>
                         <div className="flex items-center gap-3">
-                          <button className="p-2 bg-[#242424] border border-[#2a2a2a] rounded-full hover:bg-[#2a2a2a] transition-colors">
+                          <button 
+                            onClick={() => {
+                              // Voice preview functionality can be added here
+                              console.log('Preview voice:', voice);
+                            }}
+                            className="p-2 bg-[#242424] border border-[#2a2a2a] rounded-full hover:bg-[#2a2a2a] transition-colors"
+                          >
                             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M8 5v14l11-7z" />
                             </svg>
                           </button>
-                          <select className="flex-1 px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
-                            <option>Vale</option>
-                            <option>Alloy</option>
-                            <option>Echo</option>
-                            <option>Fable</option>
-                            <option>Onyx</option>
-                            <option>Shimmer</option>
+                          <select 
+                            value={voice}
+                            onChange={(e) => {
+                              setVoice(e.target.value);
+                              localStorage.setItem('tayai_voice', e.target.value);
+                            }}
+                            className="flex-1 px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
+                          >
+                            <option value="vale">Vale</option>
+                            <option value="alloy">Alloy</option>
+                            <option value="echo">Echo</option>
+                            <option value="fable">Fable</option>
+                            <option value="onyx">Onyx</option>
+                            <option value="shimmer">Shimmer</option>
                           </select>
                         </div>
                       </div>
@@ -886,21 +1078,43 @@ export default function Dashboard() {
                       {/* Separate Voice */}
                       <div className="flex items-center justify-between py-2">
                         <div className="flex-1">
-                          <label className="text-sm font-medium text-gray-300 block">Separate Voice</label>
+                          <label className="text-sm font-medium text-gray-300 block">{t.settings.separateVoice}</label>
                           <p className="text-xs text-gray-500 mt-1">
                             Keep ChatGPT Voice in a separate full screen, without real time transcripts and visuals.
                           </p>
                         </div>
-                        <button className="ml-4 relative inline-flex h-6 w-11 items-center rounded-full bg-[#2a2a2a] transition-colors">
-                          <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
+                        <button 
+                          onClick={() => {
+                            const newValue = !separateVoice;
+                            setSeparateVoice(newValue);
+                            localStorage.setItem('tayai_separate_voice', String(newValue));
+                          }}
+                          className={`ml-4 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            separateVoice ? 'bg-[#cba2ff]' : 'bg-[#2a2a2a]'
+                          }`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            separateVoice ? 'translate-x-6' : 'translate-x-1'
+                          }`} />
                         </button>
                       </div>
 
                       {/* Show additional models */}
                       <div className="flex items-center justify-between py-2">
-                        <label className="text-sm font-medium text-gray-300">Show additional models</label>
-                        <button className="ml-4 relative inline-flex h-6 w-11 items-center rounded-full bg-[#2a2a2a] transition-colors">
-                          <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
+                        <label className="text-sm font-medium text-gray-300">{t.settings.showAdditionalModels}</label>
+                        <button 
+                          onClick={() => {
+                            const newValue = !showAdditionalModels;
+                            setShowAdditionalModels(newValue);
+                            localStorage.setItem('tayai_show_additional_models', String(newValue));
+                          }}
+                          className={`ml-4 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            showAdditionalModels ? 'bg-[#cba2ff]' : 'bg-[#2a2a2a]'
+                          }`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            showAdditionalModels ? 'translate-x-6' : 'translate-x-1'
+                          }`} />
                         </button>
                       </div>
                     </div>
@@ -1208,224 +1422,10 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {settingsCategory === 'apps' && (
-                    <div className="space-y-6">
-                      <h3 className="text-xl font-semibold text-white mb-6">Apps</h3>
-                      <p className="text-sm text-gray-400">App settings coming soon...</p>
-                    </div>
-                  )}
-
                   {settingsCategory === 'schedules' && (
                     <div className="space-y-6">
                       <h3 className="text-xl font-semibold text-white mb-6">Schedules</h3>
                       <p className="text-sm text-gray-400">Schedule settings coming soon...</p>
-                    </div>
-                  )}
-
-                  {settingsCategory === 'data' && (
-                    <div className="space-y-6">
-                      <h3 className="text-xl font-semibold text-white mb-6">Data controls</h3>
-                      
-                      {/* Improve the model for everyone */}
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-300">Improve the model for everyone</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">Off</span>
-                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Remote browser data */}
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-300">Remote browser data</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">On</span>
-                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Shared links */}
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-300">Shared links</span>
-                        <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
-                          Manage
-                        </button>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Archived chats */}
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-300">Archived chats</span>
-                        <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
-                          Manage
-                        </button>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Archive all chats */}
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-300">Archive all chats</span>
-                        <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
-                          Archive all
-                        </button>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Delete all chats */}
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-300">Delete all chats</span>
-                        <button className="px-3 py-1.5 text-xs font-medium text-red-400 bg-[#242424] border border-red-800/50 rounded-md hover:bg-red-900/20 hover:border-red-700 transition-colors">
-                          Delete all
-                        </button>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Merge data from your personal workspace */}
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-300">Merge data from your personal workspace</span>
-                        <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
-                          Merge
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {settingsCategory === 'security' && (
-                    <div className="space-y-6">
-                      <h3 className="text-xl font-semibold text-white mb-6">Security</h3>
-                      
-                      {/* Passkeys */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h4 className="text-sm font-medium text-white mb-1">Passkeys</h4>
-                            <p className="text-xs text-gray-400">
-                              Passkeys are secure and protect your account with multi-factor authentication. They don&apos;t require any extra steps.
-                            </p>
-                          </div>
-                          <button className="ml-4 px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors flex items-center gap-1">
-                            Add
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Multi-factor authentication */}
-                      <div className="space-y-4">
-                        <h4 className="text-sm font-semibold text-white">Multi-factor authentication (MFA)</h4>
-                        
-                        {/* Authenticator app */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h5 className="text-xs font-medium text-gray-300 mb-1">Authenticator app</h5>
-                            <p className="text-xs text-gray-400">
-                              Use one-time codes from an authenticator app.
-                            </p>
-                          </div>
-                          <button className="ml-4 relative inline-flex h-6 w-11 items-center rounded-full bg-[#2a2a2a] transition-colors">
-                            <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
-                          </button>
-                        </div>
-
-                        {/* Text message */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h5 className="text-xs font-medium text-gray-300 mb-1">Text message</h5>
-                            <p className="text-xs text-gray-400">
-                              Get 6-digit verification codes by SMS or WhatsApp based on your country code.
-                            </p>
-                          </div>
-                          <button className="ml-4 relative inline-flex h-6 w-11 items-center rounded-full bg-[#2a2a2a] transition-colors">
-                            <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Trusted Devices */}
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-white">Trusted Devices</h4>
-                        <p className="text-xs text-gray-400">
-                          When you sign in on another device, it will be added here and can automatically receive device prompts for signing in.
-                        </p>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Log out of this device */}
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-300">Log out of this device</span>
-                        <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
-                          Log out
-                        </button>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Log out of all devices */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <span className="text-sm text-gray-300 block mb-1">Log out of all devices</span>
-                            <p className="text-xs text-gray-400">
-                              Log out of all active sessions across all devices, including your current session. It may take up to 30 minutes for other devices to be logged out.
-                            </p>
-                          </div>
-                          <button className="ml-4 px-3 py-1.5 text-xs font-medium text-red-400 bg-[#242424] border border-red-800/50 rounded-md hover:bg-red-900/20 hover:border-red-700 transition-colors">
-                            Log out all
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
-
-                      {/* Secure sign in with ChatGPT */}
-                      <div className="space-y-3">
-                        <div>
-                          <h4 className="text-sm font-medium text-white mb-1">Secure sign in with ChatGPT</h4>
-                          <p className="text-xs text-gray-400">
-                            Sign in to websites and apps across the internet with the trusted security of ChatGPT.
-                          </p>
-                          <button className="text-xs text-[#cba2ff] hover:text-[#b88ff5] underline mt-1">
-                            Learn more
-                          </button>
-                        </div>
-                        
-                        {/* Info box */}
-                        <div className="bg-[#242424] border border-[#2a2a2a] rounded-md p-4">
-                          <p className="text-xs text-gray-400">
-                            You haven&apos;t used ChatGPT to sign into any websites or apps yet. Once you do, they&apos;ll show up here.
-                          </p>
-                        </div>
-                      </div>
                     </div>
                   )}
 
