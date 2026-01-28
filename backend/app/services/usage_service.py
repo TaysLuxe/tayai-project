@@ -56,44 +56,11 @@ class UsageService:
         """
         user_service = UserService(self.db)
         
-        # Check subscription access status (for Skool integration)
-        access_active = await user_service.is_subscription_access_active(user_id)
-        if not access_active:
-            access_status = await user_service.get_subscription_access_status(user_id)
-            upgrade_url = self._get_upgrade_url(tier)
-            
-            # Check if access hasn't started yet or has expired
-            from app.core.config import settings
-            from datetime import datetime, timezone
-            try:
-                access_start = datetime.fromisoformat(
-                    settings.SKOOL_ACCESS_START_DATE.replace('Z', '+00:00')
-                )
-                if access_start.tzinfo is None:
-                    access_start = access_start.replace(tzinfo=timezone.utc)
-            except Exception:
-                access_start = datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
-            
-            now = datetime.now(timezone.utc)
-            if now < access_start:
-                message = f"TayAI access starts on {access_start.date()}. Please check back then."
-                error_type = "access_not_started"
-            else:
-                message = "Your Skool subscription access has expired. Please renew your subscription to continue using TayAI."
-                error_type = "subscription_expired"
-            
-            raise UsageLimitExceededError(
-                current_usage=0,
-                limit=0,
-                tier=tier,
-                upgrade_url=upgrade_url,
-                details={
-                    error_type: True,
-                    "message": message,
-                    "access_start_date": access_status.get("access_start_date"),
-                    "access_end_date": access_status.get("access_end_date")
-                }
-            )
+        # Check subscription access status (for Skool integration).
+        # NOTE: The gating that previously showed
+        # "TayAI access starts on 2026-02-06. Please check back then."
+        # has been temporarily disabled so users can access TayAI
+        # immediately while we iterate on access rules.
         
         # Check trial status for Basic tier
         if tier == UserTier.BASIC.value:

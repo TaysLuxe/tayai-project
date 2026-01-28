@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { authApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,6 +10,7 @@ import Link from 'next/link';
 
 export default function RegisterPage() {
   const { isAuthenticated, loading } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -30,12 +32,12 @@ export default function RegisterPage() {
     setRegisterError('');
 
     if (password !== confirmPassword) {
-      setRegisterError('Passwords do not match');
+      setRegisterError(t.auth.passwordsDoNotMatch);
       return;
     }
 
     if (password.length < 8) {
-      setRegisterError('Password must be at least 8 characters long');
+      setRegisterError(t.auth.passwordTooShort);
       return;
     }
 
@@ -46,7 +48,7 @@ export default function RegisterPage() {
       // After successful registration, redirect to login
       router.push('/login?registered=true');
     } catch (error: any) {
-      setRegisterError(error.response?.data?.detail || 'Registration failed');
+      setRegisterError(error.response?.data?.detail || t.auth.registrationFailed);
     } finally {
       setIsRegistering(false);
     }
@@ -55,9 +57,9 @@ export default function RegisterPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0f0f0f]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
-          <p className="mt-4 text-gray-400">Loading...</p>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
+            <p className="mt-4 text-gray-400">{t.common.loading}</p>
         </div>
       </div>
     );
@@ -85,7 +87,7 @@ export default function RegisterPage() {
           <div className="bg-[#1a1a1a] shadow-xl rounded-2xl p-8 space-y-6 border border-[#2a2a2a]">
             <div className="text-center">
               <h2 className="text-2xl font-semibold text-white">
-                Create your account
+                {t.auth.createNewAccount}
               </h2>
               <p className="mt-2 text-sm text-gray-400">
                 Get started with Tays Luxe Academy
@@ -110,7 +112,7 @@ export default function RegisterPage() {
             <form onSubmit={handleRegister} className="space-y-5">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Email address
+                  {t.auth.email}
                 </label>
                 <input
                   id="email"
@@ -121,13 +123,13 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 py-2 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
-                  placeholder="Enter your email"
+                  placeholder={t.auth.email}
                 />
               </div>
 
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
-                  Username
+                  {t.auth.username}
                 </label>
                 <input
                   id="username"
@@ -138,13 +140,13 @@ export default function RegisterPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="block w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 py-2 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
-                  placeholder="Choose a username"
+                  placeholder={t.auth.username}
                 />
               </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                  Password
+                  {t.auth.password}
                 </label>
                 <div className="relative">
                   <input
@@ -156,7 +158,7 @@ export default function RegisterPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="block w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 py-2 pr-10 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
-                    placeholder="Create a password"
+                    placeholder={t.auth.password}
                   />
                   <button
                     type="button"
@@ -180,7 +182,7 @@ export default function RegisterPage() {
 
               <div>
                 <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-300 mb-2">
-                  Confirm password
+                  {t.auth.confirmPassword}
                 </label>
                 <div className="relative">
                   <input
@@ -192,7 +194,7 @@ export default function RegisterPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="block w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 py-2 pr-10 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
-                    placeholder="Confirm your password"
+                    placeholder={t.auth.confirmPassword}
                   />
                   <button
                     type="button"
@@ -240,18 +242,18 @@ export default function RegisterPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Creating account...
+                    {t.common.loading}
                   </span>
                 ) : (
-                  'Create account'
+                  t.auth.register
                 )}
               </button>
             </form>
 
             <div className="text-center text-sm">
-              <span className="text-gray-400">Already have an account? </span>
+              <span className="text-gray-400">{t.auth.alreadyHaveAccount} </span>
               <Link href="/login" className="font-medium text-[#cba2ff] hover:text-[#b88ff5]">
-                Sign in
+                {t.auth.signIn}
               </Link>
             </div>
           </div>

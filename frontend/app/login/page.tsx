@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -8,6 +9,7 @@ import Link from 'next/link';
 
 function LoginForm() {
   const { isAuthenticated, login, loading } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
@@ -39,7 +41,7 @@ function LoginForm() {
       await login(username, password);
       router.push('/');
     } catch (error: any) {
-      setLoginError(error.response?.data?.detail || 'Login failed');
+      setLoginError(error.response?.data?.detail || t.auth.loginFailed);
     } finally {
       setIsLoggingIn(false);
     }
@@ -48,9 +50,9 @@ function LoginForm() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0f0f0f]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
-          <p className="mt-4 text-gray-400">Loading...</p>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
+            <p className="mt-4 text-gray-400">{t.common.loading}</p>
         </div>
       </div>
     );
@@ -78,10 +80,10 @@ function LoginForm() {
           <div className="bg-[#1a1a1a] shadow-xl rounded-2xl p-8 space-y-6 border border-[#2a2a2a]">
             <div className="text-center">
               <h2 className="text-2xl font-semibold text-white">
-                Welcome back
+                {t.auth.welcomeBack}
               </h2>
               <p className="mt-2 text-sm text-gray-400">
-                Sign in to your account to continue
+                {t.auth.signInToContinue}
               </p>
             </div>
 
@@ -94,7 +96,7 @@ function LoginForm() {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-green-400">Account created successfully! Please sign in.</p>
+                    <p className="text-sm text-green-400">{t.auth.accountCreatedSuccess}</p>
                   </div>
                 </div>
               </div>
@@ -118,7 +120,7 @@ function LoginForm() {
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
-                  Username
+                  {t.auth.username}
                 </label>
                 <input
                   id="username"
@@ -129,13 +131,13 @@ function LoginForm() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="block w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 py-2 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
-                  placeholder="Enter your username"
+                  placeholder={t.auth.username}
                 />
               </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                  Password
+                  {t.auth.password}
                 </label>
                 <div className="relative">
                   <input
@@ -147,7 +149,7 @@ function LoginForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="block w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 py-2 pr-10 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
-                    placeholder="Enter your password"
+                    placeholder={t.auth.password}
                   />
                   <button
                     type="button"
@@ -199,18 +201,18 @@ function LoginForm() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Signing in...
+                    {t.common.loading}
                   </span>
                 ) : (
-                  'Sign in'
+                  t.auth.signIn
                 )}
               </button>
             </form>
 
             <div className="text-center text-sm">
-              <span className="text-gray-400">Don&apos;t have an account? </span>
+              <span className="text-gray-400">{t.auth.dontHaveAccount} </span>
               <Link href="/register" className="font-medium text-[#cba2ff] hover:text-[#b88ff5]">
-                Sign up
+                {t.auth.createAccount}
               </Link>
             </div>
           </div>

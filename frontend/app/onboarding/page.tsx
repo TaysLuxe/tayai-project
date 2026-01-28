@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileApi } from '@/lib/api';
@@ -101,12 +101,19 @@ const STEPS = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
   const [showVideo, setShowVideo] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<OnboardingData>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Require authentication for onboarding - redirect unauthenticated users
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [loading, isAuthenticated, router]);
 
   const currentStepData = STEPS[currentStep];
   const isLastStep = currentStep === STEPS.length - 1;
@@ -149,6 +156,11 @@ export default function OnboardingPage() {
   };
 
   const handleSubmit = async () => {
+    // Extra safety: avoid submitting if somehow not authenticated
+    if (!isAuthenticated) {
+      setError('You must be logged in to complete onboarding.');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 

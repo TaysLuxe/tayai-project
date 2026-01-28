@@ -72,31 +72,12 @@ async def get_current_user(
     # Check subscription access (for Skool integration)
     # Skip check for admins
     if not user.is_admin:
-        access_active = await user_service.is_subscription_access_active(user.id)
-        if not access_active:
-            access_status = await user_service.get_subscription_access_status(user.id)
-            # Check if access hasn't started yet (before Feb 6th)
-            from app.core.config import settings
-            from datetime import datetime, timezone
-            try:
-                access_start = datetime.fromisoformat(
-                    settings.SKOOL_ACCESS_START_DATE.replace('Z', '+00:00')
-                )
-                if access_start.tzinfo is None:
-                    access_start = access_start.replace(tzinfo=timezone.utc)
-            except Exception:
-                access_start = datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
-            
-            now = datetime.now(timezone.utc)
-            if now < access_start:
-                detail = f"TayAI access starts on {access_start.date()}. Please check back then."
-            else:
-                detail = "Your Skool subscription access has expired. Please renew your subscription to continue using TayAI."
-            
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=detail
-            )
+        # NOTE: Subscription access gating (including the
+        # "TayAI access starts on 2026-02-06" message) has been
+        # temporarily disabled so that users with valid accounts
+        # can use TayAI immediately. If you need to re-enable
+        # Skool-based access windows, restore the checks here.
+        pass
     
     # Build comprehensive user context
     return {
