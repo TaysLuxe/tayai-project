@@ -367,9 +367,12 @@ class UserService(BaseService[User]):
         except Exception:
             access_start = datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
         
-        # If current time is before access start date, access is not active
-        if now < access_start:
-            return False
+        # NOTE: The original "access starts Feb 6th, 2026" gate is intentionally
+        # disabled so onboarding (and app usage) is not blocked before that date.
+        # If you need to restore it later, uncomment the block below.
+        #
+        # if now < access_start:
+        #     return False
         
         # If no subscription_access_end_date is set, access is active (after start date)
         if not user.subscription_access_end_date:
@@ -413,16 +416,19 @@ class UserService(BaseService[User]):
         except Exception:
             access_start = datetime(2026, 2, 6, 0, 0, 0, tzinfo=timezone.utc)
         
-        # Check if access has started
-        if now < access_start:
-            days_until_start = (access_start - now).days
-            return {
-                "access_active": False,
-                "access_start_date": access_start.isoformat(),
-                "access_end_date": user.subscription_access_end_date.isoformat() if user.subscription_access_end_date else None,
-                "days_remaining": 0,
-                "message": f"Access starts on {access_start.date()}. {days_until_start} days remaining."
-            }
+        # NOTE: The original "access starts Feb 6th, 2026" gate is intentionally
+        # disabled so onboarding (and app usage) is not blocked before that date.
+        # If you need to restore it later, uncomment the block below.
+        #
+        # if now < access_start:
+        #     days_until_start = (access_start - now).days
+        #     return {
+        #         "access_active": False,
+        #         "access_start_date": access_start.isoformat(),
+        #         "access_end_date": user.subscription_access_end_date.isoformat() if user.subscription_access_end_date else None,
+        #         "days_remaining": 0,
+        #         "message": f"Access starts on {access_start.date()}. {days_until_start} days remaining."
+        #     }
         
         if not user.subscription_access_end_date:
             return {
