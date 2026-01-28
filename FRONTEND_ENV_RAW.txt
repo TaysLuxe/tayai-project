@@ -1,3 +1,0 @@
-NEXT_PUBLIC_API_URL="https://api.taysluxeacademy.com"
-NEXT_PUBLIC_WS_URL="wss://api.taysluxeacademy.com"
-NODE_ENV="production"

@@ -341,3 +341,15 @@ config.local.py
 .cursorindexingignore
 .cursor-git-refresh
 backend/data/
+
+# Local dumps / scratch files (do not commit)
+ALL_ENV_VARIABLES_RAW.txt
+*_ENV_RAW.txt
+sample.txt
+BEST_SOLUTION.sh
+
+# Local screenshots / artifacts
+assets/Screenshot_*.png
+
+# Generated diagrams
+docker-compose*.dot
