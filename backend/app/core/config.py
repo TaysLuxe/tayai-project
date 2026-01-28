@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     """Application settings"""
     
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False,
+    }
+    
     # Application
     PROJECT_NAME: str = "TayAI"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
@@ -29,10 +35,12 @@ class Settings(BaseSettings):
     # CORS - Parse from environment variable
     # Supports JSON array string: ["https://example.com"]
     # Or comma-separated string: https://example.com,https://other.com
+    # Default includes production frontend URL
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
         "https://ai.taysluxeacademy.com",
+        "http://localhost:8000",  # For API docs in development
     ]
     
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
@@ -40,6 +48,7 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
         """Parse CORS origins from environment variable."""
         if isinstance(v, list):
+            logger.info(f"Using CORS origins from list: {v}")
             return v
         
         if isinstance(v, str):
@@ -63,13 +72,14 @@ class Settings(BaseSettings):
                 logger.info(f"Parsed single CORS origin: {v}")
                 return [v.strip()]
         
-        # Default fallback
+        # Default fallback - always include production frontend
         default = [
             "http://localhost:3000",
             "http://localhost:3001",
             "https://ai.taysluxeacademy.com",
+            "http://localhost:8000",
         ]
-        logger.warning(f"Could not parse CORS origins, using default: {default}")
+        logger.warning(f"Could not parse CORS origins from env var, using default: {default}")
         return default
     
     ALLOWED_HOSTS: List[str] = ["*"]
