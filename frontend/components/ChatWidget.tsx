@@ -759,7 +759,7 @@ export default function ChatWidget() {
           />
           {/* Chat Input Container */}
           <div className="relative bg-[#242424] border border-[#2a2a2a] rounded-2xl shadow-lg">
-            {/* Voice Recording Overlay - ChatGPT style */}
+            {/* Voice Recording Overlay - Tay AI style */}
             {isRecording && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-3">

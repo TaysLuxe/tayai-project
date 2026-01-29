@@ -1081,7 +1081,7 @@ export default function Dashboard() {
                         <div className="flex-1">
                           <label className="text-sm font-medium text-gray-300 block">{t.settings.separateVoice}</label>
                           <p className="text-xs text-gray-500 mt-1">
-                            Keep ChatGPT Voice in a separate full screen, without real time transcripts and visuals.
+                            Keep Tay AI Voice in a separate full screen, without real time transcripts and visuals.
                           </p>
                         </div>
                         <button 
@@ -1131,7 +1131,7 @@ export default function Dashboard() {
                           <div className="flex-1">
                             <h4 className="text-sm font-medium text-white mb-1">Responses</h4>
                             <p className="text-xs text-gray-400">
-                              Get notified when ChatGPT responds to requests that take time, like research or image generation.
+                              Get notified when Tay AI responds to requests that take time, like research or image generation.
                             </p>
                           </div>
                           <select className="ml-4 px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
@@ -1197,7 +1197,7 @@ export default function Dashboard() {
                           <div className="flex-1">
                             <h4 className="text-sm font-medium text-white mb-1">Recommendations</h4>
                             <p className="text-xs text-gray-400">
-                              Stay in the loop on new tools, tips, and features from ChatGPT.
+                              Stay in the loop on new tools, tips, and features from Tay AI.
                             </p>
                           </div>
                           <select className="ml-4 px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
@@ -1219,7 +1219,7 @@ export default function Dashboard() {
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-white">Base style and tone</h4>
                         <p className="text-xs text-gray-400">
-                          Set the style and tone of how ChatGPT responds to you. This doesn&apos;t impact ChatGPT&apos;s capabilities.
+                          Set the style and tone of how Tay AI responds to you. This doesn&apos;t impact Tay AI&apos;s capabilities.
                         </p>
                         <select className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
                           <option>Default</option>
@@ -1276,7 +1276,7 @@ export default function Dashboard() {
                           <label className="text-xs text-gray-400 block">Nickname</label>
                           <input
                             type="text"
-                            placeholder="What should ChatGPT call you?"
+                            placeholder="What should Tay AI call you?"
                             className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
                           />
                         </div>
@@ -1321,10 +1321,10 @@ export default function Dashboard() {
                           <div className="flex-1">
                             <h5 className="text-xs font-medium text-gray-300 mb-1">Reference saved memories</h5>
                             <p className="text-xs text-gray-400">
-                              Let ChatGPT save and use memories when responding.
+                              Let Tay AI save and use memories when responding.
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                              ChatGPT may use Memory to personalize queries to search providers, such as Bing.{' '}
+                              Tay AI may use Memory to personalize queries to search providers, such as Bing.{' '}
                               <button className="text-[#cba2ff] hover:text-[#b88ff5] underline">Learn more</button>
                             </p>
                           </div>
@@ -1350,7 +1350,7 @@ export default function Dashboard() {
                           <div className="flex-1">
                             <h5 className="text-xs font-medium text-gray-300 mb-1">Reference record history</h5>
                             <p className="text-xs text-gray-400">
-                              Let ChatGPT reference all previous recording transcripts and notes when responding.
+                              Let Tay AI reference all previous recording transcripts and notes when responding.
                             </p>
                           </div>
                           <button className="ml-4 relative inline-flex h-6 w-11 items-center rounded-full bg-[#cba2ff] transition-colors">
@@ -1384,19 +1384,19 @@ export default function Dashboard() {
                             {[
                               {
                                 label: 'Web search',
-                                description: 'Let ChatGPT automatically search the web for answers.',
+                                description: 'Let Tay AI automatically search the web for answers.',
                               },
                               {
                                 label: 'Code',
-                                description: 'Let ChatGPT execute code using Code Interpreter.',
+                                description: 'Let Tay AI execute code using Code Interpreter.',
                               },
                               {
                                 label: 'Canvas',
-                                description: 'Collaborate with ChatGPT on text and code.',
+                                description: 'Collaborate with Tay AI on text and code.',
                               },
                               {
-                                label: 'ChatGPT Voice',
-                                description: 'Enable Voice in ChatGPT',
+                                label: 'Tay AI Voice',
+                                description: 'Enable Voice in Tay AI',
                               },
                               {
                                 label: 'Advanced voice',
@@ -1404,7 +1404,7 @@ export default function Dashboard() {
                               },
                               {
                                 label: 'Connector search',
-                                description: 'Let ChatGPT automatically search connected sources for answers.',
+                                description: 'Let Tay AI automatically search connected sources for answers.',
                               },
                             ].map((item) => (
                               <div key={item.label} className="flex items-center justify-between">
