@@ -32,12 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (token) {
         try {
           const userData = await authApi.verify();
-          if (userData.valid) {
+          if (userData.valid && userData.user_id != null && userData.username != null) {
             setUser({
               user_id: userData.user_id,
               username: userData.username,
-              tier: userData.tier,
-              is_admin: userData.is_admin,
+              tier: userData.tier ?? '',
+              is_admin: userData.is_admin ?? false,
             });
           } else {
             localStorage.removeItem('access_token');
@@ -61,10 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const userData = await authApi.verify();
     setUser({
-      user_id: userData.user_id,
-      username: userData.username,
-      tier: userData.tier,
-      is_admin: userData.is_admin,
+      user_id: userData.user_id ?? 0,
+      username: userData.username ?? '',
+      tier: userData.tier ?? '',
+      is_admin: userData.is_admin ?? false,
     });
   };
 
@@ -77,12 +77,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     try {
       const userData = await authApi.verify();
-      if (userData.valid) {
+      if (userData.valid && userData.user_id != null && userData.username != null) {
         setUser({
           user_id: userData.user_id,
           username: userData.username,
-          tier: userData.tier,
-          is_admin: userData.is_admin,
+          tier: userData.tier ?? '',
+          is_admin: userData.is_admin ?? false,
         });
       }
     } catch (error) {
