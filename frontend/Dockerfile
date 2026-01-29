@@ -24,6 +24,9 @@ COPY package.json package-lock.json ./
 # Copy all source files
 COPY . .
 
+# Fail with clear message if lib is missing (root .gitignore must use /lib/ not lib/)
+RUN test -f lib/api.ts && test -f lib/translations.ts || (echo "ERROR: lib/api.ts or lib/translations.ts missing. Ensure root .gitignore uses /lib/ (not lib/) and commit frontend/lib/." && exit 1)
+
 # Set build-time environment variables (if needed)
 # NEXT_PUBLIC_* variables must be available at build time
 ARG NEXT_PUBLIC_API_URL

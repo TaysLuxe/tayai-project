@@ -14,10 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-# Exception: Allow frontend/lib directory (contains API module)
-!frontend/lib/
-!frontend/lib/**
-lib/
+# Only ignore repo-root lib/ (e.g. Python venv), NOT frontend/lib/
+/lib/
 lib64/
 parts/
 sdist/

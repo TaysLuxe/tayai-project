@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
 
 const nextConfig = {
   reactStrictMode: true,
@@ -7,6 +8,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+
+  // Ensure lib, contexts, components resolve from project root (fixes Docker/Railway build)
+  webpack: (config, { isServer }) => {
+    const projectRoot = path.resolve(__dirname);
+    config.resolve.alias = config.resolve.alias || {};
+    config.resolve.alias['@'] = projectRoot;
+    config.resolve.modules = [projectRoot, 'node_modules', ...(config.resolve.modules || [])];
+    return config;
+  },
+
   env: {
     NEXT_PUBLIC_API_URL:
       process.env.NEXT_PUBLIC_API_URL ||
