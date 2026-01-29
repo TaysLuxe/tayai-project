@@ -3,9 +3,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  experimental: {
-    externalDir: true, // ✅ REQUIRED for importing from lib/, contexts/, components/
-  },
+
   images: {
     unoptimized: true,
   },
