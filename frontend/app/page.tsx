@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { profileApi } from '@/lib/api';
+import type { Language } from '@/lib/translations';
 
 interface ChatSession {
   id: number;
