@@ -1443,16 +1443,16 @@ export default function Dashboard() {
                       {/* Divider */}
                       <div className="h-px bg-[#2a2a2a]"></div>
 
-                      {/* GPT Builder Profile */}
+                      {/* Tay AI Builder Profile */}
                       <div className="space-y-4">
                         <div>
-                          <h4 className="text-sm font-medium text-white mb-1">GPT builder profile</h4>
+                          <h4 className="text-sm font-medium text-white mb-1">Tay AI builder profile</h4>
                           <p className="text-xs text-gray-400">
-                            Personalize your builder profile to connect with users of your GPTs. These settings apply to publicly shared GPTs.
+                            Personalize your builder profile to connect with users of your Tay AI assistants. These settings apply to publicly shared Tay AI assistants.
                           </p>
                         </div>
 
-                        {/* GPT Preview Card */}
+                        {/* Tay AI Preview Card */}
                         <div className="relative bg-[#242424] border border-[#2a2a2a] rounded-lg p-6">
                           <button className="absolute top-3 right-3 px-2 py-1 text-xs font-medium text-white bg-[#1a1a1a] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
                             Preview
@@ -1465,7 +1465,7 @@ export default function Dashboard() {
                               </svg>
                             </div>
                             <div>
-                              <h5 className="text-base font-medium text-white">PlaceholderGPT</h5>
+                              <h5 className="text-base font-medium text-white">Tay AI</h5>
                               <div className="flex items-center justify-center gap-1 mt-1">
                                 <span className="text-xs text-gray-400">By {user?.username || 'User'}</span>
                                 <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
