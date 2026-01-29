@@ -239,6 +239,7 @@ export default function ChatWidget() {
     setShowCamera(false);
   };
 
+  // @test comment  
   const handleCaptureScreenshot = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
