@@ -1,104 +1,101 @@
-import axios from 'axios';
+/**
+ * API client for backend (auth, profile, chat).
+ * Uses NEXT_PUBLIC_API_URL for base URL (set at build time).
+ */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const API_V1_PREFIX = '/api/v1';
+const getBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL || '';
+  }
+  return process.env.NEXT_PUBLIC_API_URL || '';
+};
 
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}${API_V1_PREFIX}`,
-  headers: {
+const apiBase = (): string => {
+  const base = getBaseUrl();
+  return base ? `${base.replace(/\/$/, '')}/api/v1` : '/api/v1';
+};
+
+function getHeaders(includeAuth = true): HeadersInit {
+  const headers: HeadersInit = {
     'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor to add auth token
-apiClient.interceptors.request.use(
-  (config) => {
+  };
+  if (includeAuth && typeof window !== 'undefined') {
     const token = localStorage.getItem('access_token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
   }
-);
+  return headers;
+}
 
-// Response interceptor for token refresh
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
-          const response = await axios.post(
-            `${API_BASE_URL}${API_V1_PREFIX}/auth/refresh`,
-            { refresh_token: refreshToken }
-          );
-
-          const { access_token, refresh_token } = response.data;
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', refresh_token);
-
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
-          return apiClient(originalRequest);
-        }
-      } catch (refreshError) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const err: any = new Error(res.statusText || 'Request failed');
+    err.status = res.status;
+    err.response = res;
+    try {
+      err.data = await res.json();
+    } catch {
+      err.data = { detail: await res.text() };
     }
-
-    return Promise.reject(error);
+    throw err;
   }
-);
+  return res.json();
+}
 
-// Auth API
+// --- Auth API ---
+
 export const authApi = {
-  login: async (username: string, password: string) => {
-    const response = await apiClient.post('/auth/login', { username, password });
-    return response.data;
-  },
-
-  register: async (email: string, username: string, password: string) => {
-    const response = await apiClient.post('/auth/register', { email, username, password });
-    return response.data;
-  },
-
-  verify: async () => {
-    const response = await apiClient.get('/auth/verify');
-    return response.data;
-  },
-};
-
-// Chat API
-export const chatApi = {
-  sendMessage: async (message: string, conversationHistory: any[] = []) => {
-    const response = await apiClient.post('/chat/message', {
-      message,
-      conversation_history: conversationHistory,
-      include_sources: true,
+  async login(username: string, password: string): Promise<{ access_token: string; refresh_token: string; token_type: string; expires_in: number }> {
+    const res = await fetch(`${apiBase()}/auth/login`, {
+      method: 'POST',
+      headers: getHeaders(false),
+      body: JSON.stringify({ username, password }),
     });
-    return response.data;
+    return handleResponse(res);
+  },
+
+  async register(email: string, username: string, password: string): Promise<{ id: number; email: string; username: string; tier: string; is_active: boolean; is_admin: boolean }> {
+    const res = await fetch(`${apiBase()}/auth/register`, {
+      method: 'POST',
+      headers: getHeaders(false),
+      body: JSON.stringify({ email, username, password }),
+    });
+    return handleResponse(res);
+  },
+
+  async verify(): Promise<{ valid: boolean; user_id?: number; username?: string; tier?: string; is_admin?: boolean }> {
+    const res = await fetch(`${apiBase()}/auth/verify`, {
+      method: 'GET',
+      headers: getHeaders(true),
+    });
+    return handleResponse(res);
   },
 };
 
-// User Profile API
+// --- Profile API ---
+
 export const profileApi = {
-  getProfile: async () => {
-    const response = await apiClient.get('/auth/profile');
-    return response.data;
+  async getProfile(): Promise<{
+    user_id: number;
+    email: string;
+    username: string;
+    tier: string;
+    profile_image_url?: string;
+    full_name?: string;
+    enrolled_courses?: unknown[];
+    membership_start_date?: string;
+    last_active?: string;
+    metadata?: { onboarding_completed?: boolean; [key: string]: unknown };
+  }> {
+    const res = await fetch(`${apiBase()}/auth/profile`, {
+      method: 'GET',
+      headers: getHeaders(true),
+    });
+    return handleResponse(res);
   },
 
-  saveProfile: async (profileData: {
+  async saveProfile(data: {
     user_name?: string;
     business_type?: string;
     focus?: string;
@@ -106,8 +103,37 @@ export const profileApi = {
     goals?: string;
     experience_level?: string;
     preferred_communication_style?: string;
-  }) => {
-    const response = await apiClient.post('/auth/profile', profileData);
-    return response.data;
+  }): Promise<unknown> {
+    const res = await fetch(`${apiBase()}/auth/profile`, {
+      method: 'POST',
+      headers: getHeaders(true),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+};
+
+// --- Chat API ---
+
+export const chatApi = {
+  async sendMessage(
+    message: string,
+    conversationHistory: Array<{ role: string; content: string }>
+  ): Promise<{
+    response: string;
+    tokens_used: number;
+    message_id?: number;
+    sources?: Array<{ title: string; content?: string; category?: string; score?: number; chunk_id?: string }>;
+  }> {
+    const res = await fetch(`${apiBase()}/chat/`, {
+      method: 'POST',
+      headers: getHeaders(true),
+      body: JSON.stringify({
+        message,
+        conversation_history: conversationHistory,
+        include_sources: true,
+      }),
+    });
+    return handleResponse(res);
   },
 };
