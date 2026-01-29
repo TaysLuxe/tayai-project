@@ -1,6 +1,7 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { AuthProvider } from './_contexts/AuthContext';
+
 import { useLanguage } from '@/contexts/LanguageContext';
 import ChatWidget from '@/components/ChatWidget';
 import { useRouter } from 'next/navigation';

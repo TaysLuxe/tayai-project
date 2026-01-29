@@ -1,7 +1,10 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
+
+import { AuthProvider } from '../_contexts/AuthContext';
+import { LanguageProvider } from '../_contexts/LanguageContext';
+
+
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';

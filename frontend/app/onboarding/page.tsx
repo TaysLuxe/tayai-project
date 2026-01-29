@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { profileApi } from '@/lib/api';
+
 import WelcomeVideo from '@/components/WelcomeVideo';
+import { AuthProvider } from '../_contexts/AuthContext';
+import { api } from '../_lib/api';
+
+
+
 
 interface OnboardingData {
   user_name?: string;
