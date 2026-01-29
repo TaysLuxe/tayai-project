@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { profileApi, chatApi, type ChatHistoryMessage } from '../lib/api';
 import type { Language } from '../lib/translations';
 
-/** One conversation/session: multiple messages grouped by time (like ChatGPT). */
+/** One chat in the sidebar: can be a single Q&A or a grouped conversation. */
 interface Conversation {
   id: number;
   title: string;
@@ -29,8 +29,6 @@ export default function Dashboard() {
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  /** Gap in ms to start a new conversation (e.g. 60 min like ChatGPT). */
-  const CONVERSATION_GAP_MS = 60 * 60 * 1000;
   const [searchTerm, setSearchTerm] = useState('');
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [showLearnMoreMenu, setShowLearnMoreMenu] = useState(false);
@@ -121,8 +119,14 @@ export default function Dashboard() {
     setHistoryLoading(true);
     chatApi
       .getChatHistory(50, 0)
-      .then((res) => setHistoryItems(res.messages ?? []))
-      .catch((err) => console.error('Failed to load chat history:', err))
+      .then((res) => {
+        const list = Array.isArray(res?.messages) ? res.messages : [];
+        setHistoryItems(list);
+      })
+      .catch((err) => {
+        console.error('Failed to load chat history:', err);
+        setHistoryItems([]);
+      })
       .finally(() => setHistoryLoading(false));
   }, [isAuthenticated]);
 
@@ -200,39 +204,21 @@ export default function Dashboard() {
     setShowHistoryDropdown(false);
   };
 
-  // Group flat history into conversations (sessions) by time gap – like ChatGPT
+  // Each backend message = one row in "Your chats" (so every previous chat shows)
   const conversationsList = useMemo(() => {
     if (!historyItems.length) return [];
-    const sorted = [...historyItems].sort(
-      (a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
-    );
-    const groups: ChatHistoryMessage[][] = [];
-    let current: ChatHistoryMessage[] = [];
-    let prevTime = 0;
-    for (const m of sorted) {
-      const t = new Date(m.created_at ?? 0).getTime();
-      if (current.length > 0 && t - prevTime > CONVERSATION_GAP_MS) {
-        groups.push(current);
-        current = [];
-      }
-      current.push(m);
-      prevTime = t;
-    }
-    if (current.length) groups.push(current);
-    return groups
-      .map((msgs) => {
-        const newest = msgs[msgs.length - 1];
-        const oldest = msgs[0];
-        const title = (oldest?.message ?? '').trim().slice(0, 45) || t.dashboard.newChat;
-        return {
-          id: newest?.id ?? 0,
-          title,
-          createdAt: newest?.created_at ? new Date(newest.created_at) : new Date(),
-          messages: msgs,
-        } as Conversation;
-      })
-      .reverse();
-  }, [historyItems, CONVERSATION_GAP_MS, t.dashboard.newChat]);
+    return historyItems.map((m) => {
+      const id = m.id ?? 0;
+      const title = (m.message ?? '').trim().slice(0, 45) || t.dashboard.newChat;
+      const createdAt = m.created_at ? new Date(m.created_at) : new Date();
+      return {
+        id,
+        title,
+        createdAt,
+        messages: [m],
+      } as Conversation;
+    });
+  }, [historyItems, t.dashboard.newChat]);
 
   const filteredHistory = useMemo(() => {
     if (!searchTerm.trim()) return conversationsList;
@@ -398,9 +384,9 @@ export default function Dashboard() {
                 {historyLoading ? (
                   <div className="px-3 py-4 text-center text-xs text-gray-500">{t.common.loading}</div>
                 ) : filteredHistory.length > 0 ? (
-                  filteredHistory.map((session) => (
+                  filteredHistory.map((session, idx) => (
                     <button
-                      key={session.id}
+                      key={session.id ? String(session.id) : `chat-${idx}`}
                       onClick={() => {
                         setSelectedConversationId(session.id);
                         setSelectedChatTitle(session.title);
