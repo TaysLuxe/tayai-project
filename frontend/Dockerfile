@@ -37,6 +37,9 @@ RUN node -v && npm -v
 RUN echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL"
 RUN echo "NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL"
 
+RUN echo "==== FILE STRUCTURE ====" && ls -R app
+RUN echo "==== FILE STRUCTURE ====" && ls -R components
+
 
 # Build the Next.js application
 RUN npm run build
