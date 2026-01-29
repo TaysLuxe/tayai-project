@@ -46,6 +46,7 @@ export default function ChatWidget({ initialMessages, loadRecentOnMount = false,
   const [voiceChatDuration, setVoiceChatDuration] = useState<string>('0s');
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -60,6 +61,13 @@ export default function ChatWidget({ initialMessages, loadRecentOnMount = false,
     scrollToBottom();
   }, [messages]);
 
+  // New chat / empty session: scroll to top so UI starts from the beginning (ChatGPT-like)
+  useEffect(() => {
+    if (messages.length === 0 && messagesScrollRef.current) {
+      messagesScrollRef.current.scrollTop = 0;
+    }
+  }, [messages.length]);
+
   // Sync messages when initialMessages prop changes (e.g. user selected another conversation)
   useEffect(() => {
     if (initialMessages != null && initialMessages.length > 0) {
@@ -71,6 +79,10 @@ export default function ChatWidget({ initialMessages, loadRecentOnMount = false,
         }))
       );
       setInitialLoadDone(true);
+      // Show conversation from the start (scroll to top)
+      requestAnimationFrame(() => {
+        if (messagesScrollRef.current) messagesScrollRef.current.scrollTop = 0;
+      });
     }
   }, [initialMessages]);
 
@@ -474,7 +486,7 @@ export default function ChatWidget({ initialMessages, loadRecentOnMount = false,
       </div>
 
       {/* Messages */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+      <div ref={messagesScrollRef} className="relative z-10 flex-1 overflow-y-auto px-4 sm:px-6 py-6">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-20 h-20 rounded-full overflow-hidden mb-4 shadow-lg shadow-[#cba2ff]/30">
