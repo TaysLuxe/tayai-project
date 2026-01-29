@@ -43,12 +43,24 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
+class Conversation(Base):
+    """Conversation/session: groups messages into one chat (ChatGPT-style)."""
+    __tablename__ = "conversations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    title = Column(String(500), nullable=True)  # First message truncated
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class ChatMessage(Base):
     """Chat message model"""
     __tablename__ = "chat_messages"
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=False, index=True)
+    conversation_id = Column(Integer, nullable=True, index=True)  # FK to conversations; null = legacy
     message = Column(Text, nullable=False)
     response = Column(Text, nullable=True)
     tokens_used = Column(Integer, default=0)

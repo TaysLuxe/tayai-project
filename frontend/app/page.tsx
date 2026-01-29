@@ -6,16 +6,8 @@ import ChatWidget from '../components/ChatWidget';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { profileApi, chatApi, type ChatHistoryMessage } from '../lib/api';
+import { profileApi, chatApi, type ConversationSummary } from '../lib/api';
 import type { Language } from '../lib/translations';
-
-/** One chat in the sidebar: can be a single Q&A or a grouped conversation. */
-interface Conversation {
-  id: number;
-  title: string;
-  createdAt: Date;
-  messages: ChatHistoryMessage[];
-}
 
 export default function Dashboard() {
   const { isAuthenticated, logout, user, loading } = useAuth();
@@ -24,9 +16,9 @@ export default function Dashboard() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [chatSessionId, setChatSessionId] = useState(1);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [historyItems, setHistoryItems] = useState<ChatHistoryMessage[]>([]);
+  const [conversationsList, setConversationsList] = useState<ConversationSummary[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -113,19 +105,19 @@ export default function Dashboard() {
     checkOnboarding();
   }, [loading, isAuthenticated, router]);
 
-  // Shared refresh: load chat history from API (used on mount, when opening dropdown, and after sending)
+  // Shared refresh: list conversations (sessions) for sidebar
   const refreshHistory = useCallback(() => {
     if (!isAuthenticated) return;
     setHistoryLoading(true);
     chatApi
-      .getChatHistory(50, 0)
+      .getConversations(50, 0)
       .then((res) => {
-        const list = Array.isArray(res?.messages) ? res.messages : [];
-        setHistoryItems(list);
+        const list = Array.isArray(res?.conversations) ? res.conversations : [];
+        setConversationsList(list);
       })
       .catch((err) => {
-        console.error('Failed to load chat history:', err);
-        setHistoryItems([]);
+        console.error('Failed to load conversations:', err);
+        setConversationsList([]);
       })
       .finally(() => setHistoryLoading(false));
   }, [isAuthenticated]);
@@ -200,43 +192,47 @@ export default function Dashboard() {
   const handleNewChat = () => {
     setChatSessionId((prev) => prev + 1);
     setSelectedConversationId(null);
+    setCurrentConversationId(null);
     setSelectedChatTitle(t.dashboard.yourChats);
     setShowHistoryDropdown(false);
   };
 
-  // Each backend message = one row in "Your chats" (so every previous chat shows)
-  const conversationsList = useMemo(() => {
-    if (!historyItems.length) return [];
-    return historyItems.map((m) => {
-      const id = m.id ?? 0;
-      const title = (m.message ?? '').trim().slice(0, 45) || t.dashboard.newChat;
-      const createdAt = m.created_at ? new Date(m.created_at) : new Date();
-      return {
-        id,
-        title,
-        createdAt,
-        messages: [m],
-      } as Conversation;
-    });
-  }, [historyItems, t.dashboard.newChat]);
-
   const filteredHistory = useMemo(() => {
     if (!searchTerm.trim()) return conversationsList;
     const term = searchTerm.toLowerCase();
-    return conversationsList.filter((c) => c.title.toLowerCase().includes(term));
+    const title = (c: ConversationSummary) => (c.title ?? '').trim();
+    return conversationsList.filter((c) => title(c).toLowerCase().includes(term));
   }, [conversationsList, searchTerm]);
 
-  const selectedHistoryMessages = useMemo(() => {
-    if (selectedConversationId == null) return undefined;
-    const conv = conversationsList.find((c) => c.id === selectedConversationId);
-    if (!conv?.messages?.length) return undefined;
-    const msgs: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-    for (const m of conv.messages) {
-      msgs.push({ role: 'user', content: m.message });
-      if (m.response) msgs.push({ role: 'assistant', content: m.response });
+  // Messages for the selected conversation (loaded when user clicks a chat)
+  const [selectedConversationMessages, setSelectedConversationMessages] = useState<
+    Array<{ role: 'user' | 'assistant'; content: string }> | null
+  >(null);
+  const [loadingConversationMessages, setLoadingConversationMessages] = useState(false);
+
+  useEffect(() => {
+    if (selectedConversationId == null) {
+      setSelectedConversationMessages(null);
+      return;
     }
-    return msgs;
-  }, [selectedConversationId, conversationsList]);
+    setLoadingConversationMessages(true);
+    chatApi
+      .getConversationMessages(selectedConversationId)
+      .then((res) => {
+        const msgs: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+        for (const m of res.messages ?? []) {
+          msgs.push({ role: 'user', content: m.message });
+          if (m.response) msgs.push({ role: 'assistant', content: m.response });
+        }
+        setSelectedConversationMessages(msgs);
+      })
+      .catch(() => setSelectedConversationMessages([]))
+      .finally(() => setLoadingConversationMessages(false));
+  }, [selectedConversationId]);
+
+  const initialMessagesForWidget =
+    selectedConversationId != null ? (selectedConversationMessages ?? undefined) : undefined;
+  const conversationIdToSend = selectedConversationId ?? currentConversationId;
 
   if (loading || checkingOnboarding) {
     return (
@@ -389,12 +385,12 @@ export default function Dashboard() {
                       key={session.id ? String(session.id) : `chat-${idx}`}
                       onClick={() => {
                         setSelectedConversationId(session.id);
-                        setSelectedChatTitle(session.title);
+                        setSelectedChatTitle((session.title ?? '').trim() || t.dashboard.newChat);
                         setShowHistoryDropdown(false);
                       }}
                       className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-[#242424] truncate"
                     >
-                      {session.title}
+                      {(session.title ?? '').trim() || t.dashboard.newChat}
                     </button>
                   ))
                 ) : (
@@ -873,12 +869,20 @@ export default function Dashboard() {
 
         {/* Chat Content */}
         <div className="flex-1 overflow-hidden">
-          <ChatWidget
-            key={selectedConversationId ?? `new-${chatSessionId}`}
-            initialMessages={selectedHistoryMessages ?? []}
-            loadRecentOnMount={false}
-            onNewMessage={refreshHistory}
-          />
+          {loadingConversationMessages && selectedConversationId != null ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#cba2ff]"></div>
+            </div>
+          ) : (
+            <ChatWidget
+              key={selectedConversationId ?? `new-${chatSessionId}`}
+              initialMessages={initialMessagesForWidget ?? []}
+              loadRecentOnMount={false}
+              conversationId={conversationIdToSend ?? undefined}
+              onNewMessage={refreshHistory}
+              onConversationId={setCurrentConversationId}
+            />
+          )}
         </div>
       </main>
 

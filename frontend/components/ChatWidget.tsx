@@ -18,10 +18,18 @@ interface Message {
 interface ChatWidgetProps {
   initialMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
   loadRecentOnMount?: boolean;
+  conversationId?: number | null;
   onNewMessage?: () => void;
+  onConversationId?: (id: number) => void;
 }
 
-export default function ChatWidget({ initialMessages, loadRecentOnMount = false, onNewMessage }: ChatWidgetProps) {
+export default function ChatWidget({
+  initialMessages,
+  loadRecentOnMount = false,
+  conversationId,
+  onNewMessage,
+  onConversationId,
+}: ChatWidgetProps) {
   const { isAuthenticated } = useAuth();
   const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>(() =>
@@ -212,7 +220,7 @@ export default function ChatWidget({ initialMessages, loadRecentOnMount = false,
         content: msg.content,
       }));
 
-      const response = await chatApi.sendMessage(messageToSend, conversationHistory);
+      const response = await chatApi.sendMessage(messageToSend, conversationHistory, conversationId ?? undefined);
 
       const assistantMessage: Message = {
         role: 'assistant',
@@ -223,9 +231,9 @@ export default function ChatWidget({ initialMessages, loadRecentOnMount = false,
         })),
         timestamp: new Date(),
       };
-      
 
       setMessages((prev) => [...prev, assistantMessage]);
+      if (response.conversation_id != null) onConversationId?.(response.conversation_id);
       onNewMessage?.();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send message');

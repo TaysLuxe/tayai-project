@@ -19,7 +19,10 @@ from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
     ChatHistoryResponse,
-    ChatMessage
+    ChatMessage,
+    ListConversationsResponse,
+    ConversationSummary,
+    ConversationMessagesResponse,
 )
 from app.services.chat_service import ChatService
 from app.services.usage_service import UsageService
@@ -58,14 +61,15 @@ async def send_message(
     # Convert conversation history
     history = convert_conversation_history(request.conversation_history)
     
-    # Process message
+    # Process message (conversation_id = session: omit for new chat, send for continuing)
     chat_service = ChatService(db)
     response = await chat_service.process_message(
         user_id=current_user["user_id"],
         message=sanitized_message,
         conversation_history=history,
         include_sources=request.include_sources,
-        user_tier=current_user["tier"]
+        user_tier=current_user["tier"],
+        conversation_id=request.conversation_id,
     )
     
     # Track usage
@@ -138,6 +142,50 @@ async def send_message_stream(
     )
 
 
+@router.get("/conversations", response_model=ListConversationsResponse)
+@handle_service_errors
+async def list_conversations(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """List conversations (sessions) for the current user, newest first."""
+    chat_service = ChatService(db)
+    conversations, has_more = await chat_service.get_conversations(
+        user_id=current_user["user_id"],
+        limit=limit,
+        offset=offset,
+    )
+    return ListConversationsResponse(
+        conversations=[ConversationSummary.model_validate(c) for c in conversations],
+        total_count=len(conversations),
+        has_more=has_more,
+    )
+
+
+@router.get("/conversations/{conversation_id}/messages", response_model=ConversationMessagesResponse)
+@handle_service_errors
+async def get_conversation_messages(
+    conversation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Get all messages in one conversation (full thread)."""
+    chat_service = ChatService(db)
+    messages = await chat_service.get_conversation_messages(
+        user_id=current_user["user_id"],
+        conversation_id=conversation_id,
+    )
+    if messages is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return ConversationMessagesResponse(
+        conversation_id=conversation_id,
+        messages=messages,
+        total_count=len(messages),
+    )
+
+
 @router.get("/history", response_model=ChatHistoryResponse)
 @handle_service_errors
 async def get_chat_history(
@@ -146,20 +194,16 @@ async def get_chat_history(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get chat history for the current user."""
+    """Get chat history for the current user (flat; legacy)."""
     chat_service = ChatService(db)
-    
-    # Get one extra to check for more
     messages = await chat_service.get_chat_history(
         user_id=current_user["user_id"],
         limit=limit + 1,
         offset=offset
     )
-    
     has_more = len(messages) > limit
     if has_more:
         messages = messages[:limit]
-    
     return ChatHistoryResponse(
         messages=messages,
         total_count=len(messages),

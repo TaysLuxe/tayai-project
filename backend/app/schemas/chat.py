@@ -38,6 +38,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
     conversation_history: Optional[List[ConversationMessage]] = None
     include_sources: bool = False
+    conversation_id: Optional[int] = None  # Session: omit for new chat, send for continuing
 
 
 class PersonaTestRequest(BaseModel):
@@ -66,6 +67,7 @@ class ChatResponse(BaseModel):
     response: str
     tokens_used: int
     message_id: Optional[int] = None
+    conversation_id: Optional[int] = None  # Session: use for subsequent messages
     sources: Optional[List[SourceInfo]] = None
 
 
@@ -74,6 +76,31 @@ class ChatHistoryResponse(BaseModel):
     messages: List[ChatMessage]
     total_count: int
     has_more: bool
+
+
+class ConversationSummary(BaseModel):
+    """One conversation/session for sidebar."""
+    id: int
+    title: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ListConversationsResponse(BaseModel):
+    """List of conversations (sessions)."""
+    conversations: List[ConversationSummary]
+    total_count: int
+    has_more: bool
+
+
+class ConversationMessagesResponse(BaseModel):
+    """All messages in one conversation (full thread)."""
+    conversation_id: int
+    messages: List[ChatMessage]
+    total_count: int
 
 
 class PersonaTestResponse(BaseModel):

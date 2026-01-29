@@ -136,24 +136,65 @@ export interface ChatHistoryResponse {
   has_more: boolean;
 }
 
+/** One conversation/session (sidebar item). */
+export interface ConversationSummary {
+  id: number;
+  title?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ListConversationsResponse {
+  conversations: ConversationSummary[];
+  total_count: number;
+  has_more: boolean;
+}
+
+export interface ConversationMessagesResponse {
+  conversation_id: number;
+  messages: ChatHistoryMessage[];
+  total_count: number;
+}
+
 export const chatApi = {
   async sendMessage(
     message: string,
-    conversationHistory: Array<{ role: string; content: string }>
+    conversationHistory: Array<{ role: string; content: string }>,
+    conversationId?: number | null
   ): Promise<{
     response: string;
     tokens_used: number;
     message_id?: number;
+    conversation_id?: number;
     sources?: Array<{ title: string; content?: string; category?: string; score?: number; chunk_id?: string }>;
   }> {
+    const body: Record<string, unknown> = {
+      message,
+      conversation_history: conversationHistory,
+      include_sources: true,
+    };
+    if (conversationId != null) body.conversation_id = conversationId;
     const res = await fetch(`${apiBase()}/chat/`, {
       method: 'POST',
       headers: getHeaders(true),
-      body: JSON.stringify({
-        message,
-        conversation_history: conversationHistory,
-        include_sources: true,
-      }),
+      body: JSON.stringify(body),
+    });
+    return handleResponse(res);
+  },
+
+  async getConversations(limit = 50, offset = 0): Promise<ListConversationsResponse> {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    const res = await fetch(`${apiBase()}/chat/conversations?${params}`, {
+      method: 'GET',
+      headers: getHeaders(true),
+    });
+    return handleResponse(res);
+  },
+
+  async getConversationMessages(conversationId: number): Promise<ConversationMessagesResponse> {
+    const res = await fetch(`${apiBase()}/chat/conversations/${conversationId}/messages`, {
+      method: 'GET',
+      headers: getHeaders(true),
     });
     return handleResponse(res);
   },

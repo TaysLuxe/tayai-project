@@ -40,12 +40,12 @@ from app.core.prompts import (
     detect_instagram_intent,
     get_instagram_intelligence_prompt,
 )
-from app.db.models import ChatMessage, MissingKBItem, QuestionLog, User
+from app.db.models import ChatMessage, Conversation, MissingKBItem, QuestionLog, User
 from app.services.rag_service import RAGService, ContextResult
 from app.services.user_service import UserService
 from app.schemas.chat import ChatResponse
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,8 @@ class ChatService:
         message: str,
         conversation_history: Optional[List[Dict]] = None,
         include_sources: bool = False,
-        user_tier: Optional[str] = None
+        user_tier: Optional[str] = None,
+        conversation_id: Optional[int] = None,
     ) -> ChatResponse:
         """
         Process a chat message using RAG and return AI response.
@@ -136,21 +137,40 @@ class ChatService:
             if kb_confidence < RAG_MIN_CONFIDENCE:
                 logger.info(f"Low confidence ({kb_confidence:.2f}) - may need KB content for: {message[:50]}...")
             
+            # Resolve or create conversation (session)
+            conv = None
+            if conversation_id:
+                r = await self.db.execute(
+                    select(Conversation).where(
+                        Conversation.id == conversation_id,
+                        Conversation.user_id == user_id,
+                    )
+                )
+                conv = r.scalar_one_or_none()
+            if conv is None:
+                title = (message[:500].strip() or "New chat")[:500]
+                conv = Conversation(user_id=user_id, title=title)
+                self.db.add(conv)
+                await self.db.flush()
+            else:
+                conv.updated_at = datetime.now(timezone.utc)
+            conversation_id = conv.id
+
             # Save to database
             chat_message = ChatMessage(
                 user_id=user_id,
+                conversation_id=conversation_id,
                 message=message,
                 response=ai_response,
-                tokens_used=tokens_used
+                tokens_used=tokens_used,
             )
             self.db.add(chat_message)
             await self.db.commit()
             await self.db.refresh(chat_message)
-            
-            logger.info(f"Processed message for user {user_id}, tokens: {tokens_used}")
-            
+
+            logger.info(f"Processed message for user {user_id}, conversation_id={conversation_id}, tokens: {tokens_used}")
+
             # Log question and check for missing KB items (async logging)
-            # Use a separate try/except to not affect the main response
             try:
                 await self._log_question_and_missing_kb(
                     user_id=user_id,
@@ -159,22 +179,20 @@ class ChatService:
                     context_type=context_type,
                     context_result=context_result,
                     user_tier=user_tier,
-                    tokens_used=tokens_used
+                    tokens_used=tokens_used,
                 )
             except Exception as log_error:
                 logger.error(f"Error in logging (non-fatal): {log_error}")
                 await self.db.rollback()
-            
-            # Build response
+
             result = ChatResponse(
                 response=ai_response,
                 tokens_used=tokens_used,
-                message_id=chat_message.id
+                message_id=chat_message.id,
+                conversation_id=conversation_id,
             )
-            
             if include_sources and isinstance(context_result, ContextResult):
                 result.sources = context_result.sources
-            
             return result
             
         except Exception as e:
@@ -337,15 +355,60 @@ class ChatService:
         limit: int = CHAT_HISTORY_DEFAULT_LIMIT,
         offset: int = 0
     ) -> List[ChatMessage]:
-        """Get chat history for a user."""
-        # Optimize query with proper indexing and limits
+        """Get chat history for a user (flat; legacy)."""
         query = select(ChatMessage).where(ChatMessage.user_id == user_id)
         query = query.order_by(desc(ChatMessage.created_at))
         query = optimize_query(query, limit=limit, offset=offset)
-        
         result = await self.db.execute(query)
         return list(result.scalars().all())
-    
+
+    @measure_performance
+    async def get_conversations(
+        self,
+        user_id: int,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple:
+        """List conversations (sessions) for user, newest first. Returns (list, has_more)."""
+        query = (
+            select(Conversation)
+            .where(Conversation.user_id == user_id)
+            .order_by(desc(Conversation.updated_at))
+        )
+        query = optimize_query(query, limit=limit + 1, offset=offset)
+        result = await self.db.execute(query)
+        rows = list(result.scalars().all())
+        has_more = len(rows) > limit
+        if has_more:
+            rows = rows[:limit]
+        return rows, has_more
+
+    @measure_performance
+    async def get_conversation_messages(
+        self,
+        user_id: int,
+        conversation_id: int,
+    ) -> Optional[List[ChatMessage]]:
+        """All messages in one conversation (chronological). Returns None if not found or not owned."""
+        conv = await self.db.execute(
+            select(Conversation).where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
+        )
+        if conv.scalar_one_or_none() is None:
+            return None
+        query = (
+            select(ChatMessage)
+            .where(
+                ChatMessage.conversation_id == conversation_id,
+                ChatMessage.user_id == user_id,
+            )
+            .order_by(ChatMessage.created_at.asc())
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
     @measure_performance
     async def get_conversation_context(
         self,
