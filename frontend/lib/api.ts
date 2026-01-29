@@ -120,6 +120,22 @@ export const profileApi = {
   },
 };
 
+/** Single chat message from history API (one user message + assistant response). */
+export interface ChatHistoryMessage {
+  id?: number;
+  user_id: number;
+  message: string;
+  response?: string | null;
+  tokens_used?: number;
+  created_at?: string;
+}
+
+export interface ChatHistoryResponse {
+  messages: ChatHistoryMessage[];
+  total_count: number;
+  has_more: boolean;
+}
+
 export const chatApi = {
   async sendMessage(
     message: string,
@@ -138,6 +154,24 @@ export const chatApi = {
         conversation_history: conversationHistory,
         include_sources: true,
       }),
+    });
+    return handleResponse(res);
+  },
+
+  async getChatHistory(limit = 50, offset = 0): Promise<ChatHistoryResponse> {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    const res = await fetch(`${apiBase()}/chat/history?${params}`, {
+      method: 'GET',
+      headers: getHeaders(true),
+    });
+    return handleResponse(res);
+  },
+
+  async getConversationContext(messageCount = 20): Promise<{ conversation_history: Array<{ role: string; content: string }> }> {
+    const params = new URLSearchParams({ message_count: String(messageCount) });
+    const res = await fetch(`${apiBase()}/chat/context?${params}`, {
+      method: 'GET',
+      headers: getHeaders(true),
     });
     return handleResponse(res);
   },

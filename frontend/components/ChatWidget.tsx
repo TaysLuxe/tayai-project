@@ -15,10 +15,23 @@ interface Message {
   voiceDuration?: string;
 }
 
-export default function ChatWidget() {
+interface ChatWidgetProps {
+  initialMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  loadRecentOnMount?: boolean;
+  onNewMessage?: () => void;
+}
+
+export default function ChatWidget({ initialMessages, loadRecentOnMount = false, onNewMessage }: ChatWidgetProps) {
   const { isAuthenticated } = useAuth();
   const { t } = useLanguage();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() =>
+    (initialMessages ?? []).map((m) => ({
+      role: m.role,
+      content: m.content,
+      timestamp: new Date(),
+    }))
+  );
+  const [initialLoadDone, setInitialLoadDone] = useState(!loadRecentOnMount && initialMessages !== undefined);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +59,47 @@ export default function ChatWidget() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Sync messages when initialMessages prop changes (e.g. user selected another conversation)
+  useEffect(() => {
+    if (initialMessages != null && initialMessages.length > 0) {
+      setMessages(
+        initialMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(),
+        }))
+      );
+      setInitialLoadDone(true);
+    }
+  }, [initialMessages]);
+
+  // Load recent conversation context when in "current chat" mode
+  useEffect(() => {
+    if (!loadRecentOnMount || !isAuthenticated || initialLoadDone) return;
+    let cancelled = false;
+    chatApi
+      .getConversationContext(20)
+      .then((res) => {
+        if (cancelled || !res.conversation_history?.length) return;
+        setMessages(
+          res.conversation_history.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+            timestamp: new Date(),
+          }))
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('Failed to load conversation context:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setInitialLoadDone(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadRecentOnMount, isAuthenticated, initialLoadDone]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -160,6 +214,7 @@ export default function ChatWidget() {
       
 
       setMessages((prev) => [...prev, assistantMessage]);
+      onNewMessage?.();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send message');
       console.error('Chat error:', err);

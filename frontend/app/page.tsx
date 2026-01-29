@@ -6,7 +6,7 @@ import ChatWidget from '../components/ChatWidget';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { profileApi } from '../lib/api';
+import { profileApi, chatApi, type ChatHistoryMessage } from '../lib/api';
 import type { Language } from '../lib/translations';
 
 interface ChatSession {
@@ -23,6 +23,9 @@ export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [chatSessionId, setChatSessionId] = useState(1);
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
+  const [historyItems, setHistoryItems] = useState<ChatHistoryMessage[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [showLearnMoreMenu, setShowLearnMoreMenu] = useState(false);
@@ -107,6 +110,35 @@ export default function Dashboard() {
     checkOnboarding();
   }, [loading, isAuthenticated, router]);
 
+  // Fetch chat history when authenticated and onboarding done
+  useEffect(() => {
+    if (!isAuthenticated || checkingOnboarding) return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    chatApi
+      .getChatHistory(50, 0)
+      .then((res) => {
+        if (cancelled) return;
+        setHistoryItems(res.messages);
+        setChatHistory(
+          res.messages.map((m) => ({
+            id: m.id ?? 0,
+            title: (m.message || '').slice(0, 50).trim() || t.dashboard.newChat,
+            createdAt: m.created_at ? new Date(m.created_at) : new Date(),
+          }))
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('Failed to load chat history:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, checkingOnboarding, t.dashboard.newChat]);
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -170,15 +202,9 @@ export default function Dashboard() {
 
   const handleNewChat = () => {
     const nextId = chatSessionId + 1;
-    const newSession: ChatSession = {
-      id: nextId,
-      title: `Chat ${chatHistory.length + 1}`,
-      createdAt: new Date(),
-    };
-
     setChatSessionId(nextId);
-    setChatHistory((prev) => [newSession, ...prev]);
-    setSelectedChatTitle(newSession.title);
+    setSelectedChatId(null);
+    setSelectedChatTitle(t.dashboard.yourChats);
     setShowHistoryDropdown(false);
   };
 
@@ -187,6 +213,17 @@ export default function Dashboard() {
     const term = searchTerm.toLowerCase();
     return chatHistory.filter((session) => session.title.toLowerCase().includes(term));
   }, [chatHistory, searchTerm]);
+
+  const selectedHistoryMessages = useMemo(() => {
+    if (selectedChatId == null) return undefined;
+    const item = historyItems.find((m) => m.id === selectedChatId);
+    if (!item) return undefined;
+    const msgs: Array<{ role: 'user' | 'assistant'; content: string }> = [
+      { role: 'user', content: item.message },
+    ];
+    if (item.response) msgs.push({ role: 'assistant', content: item.response });
+    return msgs;
+  }, [selectedChatId, historyItems]);
 
   if (loading || checkingOnboarding) {
     return (
@@ -331,8 +368,8 @@ export default function Dashboard() {
                   <button
                     key={session.id}
                     onClick={() => {
+                      setSelectedChatId(session.id);
                       setSelectedChatTitle(session.title);
-                      setChatSessionId(session.id);
                       setShowHistoryDropdown(false);
                     }}
                     className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-[#242424] truncate"
@@ -817,7 +854,23 @@ export default function Dashboard() {
 
         {/* Chat Content */}
         <div className="flex-1 overflow-hidden">
-          <ChatWidget key={chatSessionId} />
+          <ChatWidget
+            key={selectedChatId ?? `new-${chatSessionId}`}
+            initialMessages={selectedHistoryMessages}
+            loadRecentOnMount={selectedChatId == null}
+            onNewMessage={() => {
+              chatApi.getChatHistory(50, 0).then((res) => {
+                setHistoryItems(res.messages);
+                setChatHistory(
+                  res.messages.map((m) => ({
+                    id: m.id ?? 0,
+                    title: (m.message || '').slice(0, 50).trim() || t.dashboard.newChat,
+                    createdAt: m.created_at ? new Date(m.created_at) : new Date(),
+                  }))
+                );
+              });
+            }}
+          />
         </div>
       </main>
 
