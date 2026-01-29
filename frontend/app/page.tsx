@@ -5,7 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import ChatWidget from '../components/ChatWidget';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { profileApi, chatApi, type ChatHistoryMessage } from '../lib/api';
 import type { Language } from '../lib/translations';
 
@@ -115,27 +115,22 @@ export default function Dashboard() {
     checkOnboarding();
   }, [loading, isAuthenticated, router]);
 
-  // Fetch chat history when authenticated and onboarding done
-  useEffect(() => {
-    if (!isAuthenticated || checkingOnboarding) return;
-    let cancelled = false;
+  // Shared refresh: load chat history from API (used on mount, when opening dropdown, and after sending)
+  const refreshHistory = useCallback(() => {
+    if (!isAuthenticated) return;
     setHistoryLoading(true);
     chatApi
       .getChatHistory(50, 0)
-      .then((res) => {
-        if (cancelled) return;
-        setHistoryItems(res.messages);
-      })
-      .catch((err) => {
-        if (!cancelled) console.error('Failed to load chat history:', err);
-      })
-      .finally(() => {
-        if (!cancelled) setHistoryLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, checkingOnboarding]);
+      .then((res) => setHistoryItems(res.messages ?? []))
+      .catch((err) => console.error('Failed to load chat history:', err))
+      .finally(() => setHistoryLoading(false));
+  }, [isAuthenticated]);
+
+  // Fetch chat history when authenticated and onboarding done
+  useEffect(() => {
+    if (!isAuthenticated || checkingOnboarding) return;
+    refreshHistory();
+  }, [isAuthenticated, checkingOnboarding, refreshHistory]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -378,7 +373,11 @@ export default function Dashboard() {
         <div className="flex-1 overflow-y-auto p-4">
           <div className="relative mb-2" data-history-dropdown>
             <button
-              onClick={() => setShowHistoryDropdown((prev) => !prev)}
+              onClick={() => {
+                const opening = !showHistoryDropdown;
+                setShowHistoryDropdown((prev) => !prev);
+                if (opening) refreshHistory();
+              }}
               className="w-full flex items-center justify-between px-3 py-2 text-xs bg-[#242424] border border-[#2a2a2a] rounded-md text-gray-200 hover:border-[#cba2ff]/70 focus:outline-none focus:ring-1 focus:ring-[#cba2ff]/70"
             >
               <span className="truncate">
@@ -394,28 +393,30 @@ export default function Dashboard() {
               </svg>
             </button>
 
-            {showHistoryDropdown && filteredHistory.length > 0 && (
+            {showHistoryDropdown && (
               <div className="absolute mt-1 w-full bg-[#111111] border border-[#2a2a2a] rounded-md shadow-xl z-20 max-h-56 overflow-y-auto">
-                {filteredHistory.map((session) => (
-                  <button
-                    key={session.id}
-                    onClick={() => {
-                      setSelectedConversationId(session.id);
-                      setSelectedChatTitle(session.title);
-                      setShowHistoryDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-[#242424] truncate"
-                  >
-                    {session.title}
-                  </button>
-                ))}
+                {historyLoading ? (
+                  <div className="px-3 py-4 text-center text-xs text-gray-500">{t.common.loading}</div>
+                ) : filteredHistory.length > 0 ? (
+                  filteredHistory.map((session) => (
+                    <button
+                      key={session.id}
+                      onClick={() => {
+                        setSelectedConversationId(session.id);
+                        setSelectedChatTitle(session.title);
+                        setShowHistoryDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-[#242424] truncate"
+                    >
+                      {session.title}
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-3 py-4 text-xs text-gray-500">{t.dashboard.noChatsYet}</p>
+                )}
               </div>
             )}
           </div>
-
-          {filteredHistory.length === 0 && (
-            <p className="text-xs text-gray-600 mt-2">{t.dashboard.noChatsYet}</p>
-          )}
         </div>
       )}
 
@@ -890,9 +891,7 @@ export default function Dashboard() {
             key={selectedConversationId ?? `new-${chatSessionId}`}
             initialMessages={selectedHistoryMessages ?? []}
             loadRecentOnMount={false}
-            onNewMessage={() => {
-              chatApi.getChatHistory(50, 0).then((res) => setHistoryItems(res.messages));
-            }}
+            onNewMessage={refreshHistory}
           />
         </div>
       </main>
