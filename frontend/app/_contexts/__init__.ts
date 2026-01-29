@@ -1,3 +1,3 @@
 // Contexts exports
-export { AuthProvider, useAuth } from '../AuthContext';
-
+export { AuthProvider, useAuth } from './AuthContext';
+export { LanguageProvider, useLanguage } from './LanguageContext';
