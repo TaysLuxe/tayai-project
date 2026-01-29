@@ -21,11 +21,14 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Copy all source files
+# Copy all source files (build context MUST be frontend/ so COPY . . gets app/, components/, lib/, contexts/)
 COPY . .
 
-# Fail with clear message if lib is missing (root .gitignore must use /lib/ not lib/)
-RUN test -f lib/api.ts && test -f lib/translations.ts || (echo "ERROR: lib/api.ts or lib/translations.ts missing. Ensure root .gitignore uses /lib/ (not lib/) and commit frontend/lib/." && exit 1)
+# Sanity check: build context must be frontend/ (Railway: Service → Settings → Root Directory = frontend)
+RUN test -d app/login && test -d app/register && test -d app/onboarding && test -d app/_contexts && test -d components && test -d lib && test -d contexts || (echo "ERROR: Build context is wrong. Only app/page.tsx or partial tree found. In Railway: Service → Settings → set Root Directory to 'frontend'. Then redeploy." && ls -la app 2>/dev/null || true && exit 1)
+
+# Fail with clear message if lib is missing
+RUN test -f lib/api.ts && test -f lib/translations.ts || (echo "ERROR: lib/api.ts or lib/translations.ts missing. Commit frontend/lib/ and ensure root .gitignore uses /lib/ (not lib/)." && exit 1)
 
 # Set build-time environment variables (if needed)
 # NEXT_PUBLIC_* variables must be available at build time
