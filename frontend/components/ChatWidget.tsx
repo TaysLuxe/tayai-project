@@ -2,9 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { chatApi } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { chatApi } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Message {
   role: 'user' | 'assistant';

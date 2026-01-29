@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
-import WelcomeVideo from '@/components/WelcomeVideo';
-import { AuthProvider } from '../_contexts/AuthContext';
-import { api } from '../_lib/api';
+import { useAuth } from '../../contexts/AuthContext';
+import WelcomeVideo from '../../components/WelcomeVideo';
+import { profileApi } from '../../lib/api';
 
 
 
