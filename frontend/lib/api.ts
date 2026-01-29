@@ -3,6 +3,17 @@
  * Uses NEXT_PUBLIC_API_URL for base URL (set at build time).
  */
 
+/** Discriminated union: when valid is true, user fields are required */
+export type UserVerifyResponse =
+  | { valid: false }
+  | {
+      valid: true;
+      user_id: number;
+      username: string;
+      tier: string;
+      is_admin: boolean;
+    };
+
 const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
     return process.env.NEXT_PUBLIC_API_URL || '';
@@ -62,7 +73,7 @@ export const authApi = {
     return handleResponse(res);
   },
 
-  async verify(): Promise<{ valid: boolean; user_id?: number; username?: string; tier?: string; is_admin?: boolean }> {
+  async verify(): Promise<UserVerifyResponse> {
     const res = await fetch(`${apiBase()}/auth/verify`, {
       method: 'GET',
       headers: getHeaders(true),
