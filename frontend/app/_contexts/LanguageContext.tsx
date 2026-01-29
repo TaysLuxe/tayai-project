@@ -19,7 +19,7 @@ const LANGUAGE_STORAGE_KEY = 'tayai_language';
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('en');
 
-  // Load language from localStorage on mount
+  // Load language from localStorage on mount f
   useEffect(() => {
     const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'fr' || savedLanguage === 'nl' || savedLanguage === 'es' || savedLanguage === 'pt')) {
