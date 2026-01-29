@@ -151,9 +151,13 @@ export default function ChatWidget() {
       const assistantMessage: Message = {
         role: 'assistant',
         content: response.response,
-        sources: response.sources,
+        sources: response.sources?.map((s: any) => ({
+          title: s.title,
+          content: s.content ?? '',
+        })),
         timestamp: new Date(),
       };
+      
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: any) {
