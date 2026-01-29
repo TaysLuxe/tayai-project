@@ -17,7 +17,7 @@ interface ChatSession {
 
 export default function Dashboard() {
   const { isAuthenticated, logout, user, loading } = useAuth();
-  const { language, setLanguage, t, languageCodes } = useLanguage();
+  const { language, setLanguage, t, languageNames, languageCodes } = useLanguage();
   const router = useRouter();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -412,12 +412,11 @@ export default function Dashboard() {
                   </svg>
                 </button>
 
-                {/* Language Dropdown */}
+                {/* Language Dropdown - use language codes so setLanguage gets the correct value */}
                 {showLanguageMenu && (
                   <div className="absolute right-0 bottom-full mb-1 w-56 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
                     <div className="py-1">
-                      {['English', 'Français', 'Nederlands', 'Español', 'Português'].map((langName) => {
-                        const langCode = languageCodes[langName];
+                      {(Object.keys(languageNames) as Language[]).map((langCode) => {
                         const isSelected = language === langCode;
                         return (
                           <button
@@ -430,7 +429,7 @@ export default function Dashboard() {
                               setShowLanguageMenu(false);
                             }}
                           >
-                            <span>{langName}</span>
+                            <span>{languageNames[langCode]}</span>
                             {isSelected && (
                               <svg className="w-4 h-4 text-[#cba2ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
