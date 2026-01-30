@@ -311,13 +311,14 @@ class ChatService:
                 "content": get_context_injection_prompt(context, user_message, kb_confidence)
             })
         elif kb_confidence < RAG_MIN_CONFIDENCE:
-            # No context and low confidence - add clarifying instruction
+            # No or weak KB match - still answer as mentor using best practices
             messages.append({
                 "role": "system",
                 "content": (
-                    "NO KNOWLEDGE BASE MATCH for this question. "
-                    "Consider asking clarifying questions before giving a full answer. "
-                    "Don't give generic advice - be specific or ask what they need."
+                    "No strong Tay-specific knowledge base match for this question. "
+                    "Still answer fully as a mentor using general business, marketing, and platform best practices. "
+                    "Do NOT refuse or shorten your answer—give opinionated, actionable guidance. "
+                    "When Tay-specific frameworks or 1:1 decisions would help, say so and suggest mentorship where appropriate."
                 )
             })
         
