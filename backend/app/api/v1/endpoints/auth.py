@@ -26,11 +26,12 @@ from app.schemas.auth import (
     Token,
     TokenData,
     TokenRefreshRequest,
-    UserLogin,
     UserVerify,
     UserCreate,
     UserResponse,
     PasswordChange,
+    PasswordResetRequest,
+    PasswordResetConfirm,
     OnboardingProfile,
 )
 from app.services.user_service import UserService
@@ -41,14 +42,9 @@ from app.core.config import settings
 from app.utils import create_user_tokens
 import httpx
 import logging
+import os
 import secrets
 from datetime import datetime, timezone
-
-from pydantic import BaseModel
-
-class LoginSchema(BaseModel):
-    username: str
-    password: str
 
 logger = logging.getLogger(__name__)
 
@@ -58,18 +54,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/lo
 
 @router.post("/login", response_model=Token)
 async def login(
-    payload: LoginSchema,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
     """
     User login endpoint.
-    Accepts JSON body: { "username": "...", "password": "..." }
+    Accepts form data (OAuth2 standard): username and password as application/x-www-form-urlencoded.
     """
     user_service = UserService(db)
 
-    user = await user_service.get_user_by_username(payload.username)
+    user = await user_service.get_user_by_username(form_data.username)
 
-    if not user or not verify_password(payload.password, user.hashed_password):
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password"
@@ -207,6 +203,67 @@ async def change_password(
     await user_service.update_password(user.id, password_data.new_password)
     
     return {"message": "Password updated successfully"}
+
+
+@router.post("/password/reset-request")
+async def request_password_reset(
+    data: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Request a password reset. Sends a reset link to the user's email.
+    For security, always returns success even if email not found (prevents enumeration).
+    In development, returns the reset link in the response for testing.
+    """
+    user_service = UserService(db)
+    user = await user_service.get_user_by_email(data.email)
+
+    if user:
+        token = generate_password_reset_token(user.email)
+        frontend_url = getattr(settings, "FRONTEND_URL", None) or os.getenv("FRONTEND_URL", "http://localhost:3000")
+        reset_link = f"{frontend_url.rstrip('/')}/reset-password?token={token}"
+
+        if settings.DEBUG:
+            logger.info(f"Password reset link for {user.email}: {reset_link}")
+            return {
+                "message": "If an account exists with this email, a reset link has been sent.",
+                "reset_link": reset_link,
+            }
+        # TODO: In production, send email with reset_link. For now, return it when DEBUG.
+        return {
+            "message": "If an account exists with this email, a reset link has been sent.",
+            "reset_link": reset_link,
+        }
+
+    return {"message": "If an account exists with this email, a reset link has been sent."}
+
+
+@router.post("/password/reset-confirm")
+async def confirm_password_reset(
+    data: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Confirm password reset with token from email link.
+    Sets the new password for the user.
+    """
+    email = verify_password_reset_token(data.token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link. Please request a new one.",
+        )
+
+    user_service = UserService(db)
+    user = await user_service.get_user_by_email(email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link. Please request a new one.",
+        )
+
+    await user_service.update_password(user.id, data.new_password)
+    return {"message": "Password has been reset successfully. You can now sign in."}
 
 
 @router.get("/me", response_model=UserResponse)

@@ -56,7 +56,7 @@ TEST_USERS = [
     {
         "email": "admin@example.com",
         "username": "admin",
-        "password": "uYo@r3sEcur3DN",
+        "password": "adminpassword123",
         "tier": UserTier.VIP,
         "is_admin": True,
     },
@@ -78,6 +78,7 @@ async def seed_users():
         
         created_count = 0
         skipped_count = 0
+        updated_count = 0
         
         for user_data in TEST_USERS:
             try:
@@ -91,9 +92,15 @@ async def seed_users():
                 )
                 print(f"✓ Created: {user.username} ({user.tier.value}) - {user.email}")
                 created_count += 1
-            except AlreadyExistsError as e:
-                print(f"⊘ Skipped: {user_data['username']} (already exists)")
-                skipped_count += 1
+            except AlreadyExistsError:
+                # Update password for existing user so credentials stay in sync
+                existing = await user_service.get_user_by_username(user_data["username"])
+                if existing:
+                    await user_service.update_password(existing.id, user_data["password"])
+                    print(f"↻ Updated password: {user_data['username']} ({user_data['tier'].value})")
+                    updated_count += 1
+                else:
+                    skipped_count += 1
             except Exception as e:
                 print(f"✗ Error creating {user_data['username']}: {str(e)}")
                 continue
@@ -101,6 +108,7 @@ async def seed_users():
         print("-" * 60)
         print(f"\nSummary:")
         print(f"  Created: {created_count} users")
+        print(f"  Updated: {updated_count} users")
         print(f"  Skipped: {skipped_count} users")
         print(f"  Total: {len(TEST_USERS)} users")
         

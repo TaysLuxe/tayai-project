@@ -179,14 +179,14 @@ export default function OnboardingPage() {
   // Show welcome video first
   if (showVideo) {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#000000] flex items-center justify-center p-4">
         <WelcomeVideo onComplete={handleVideoComplete} onSkip={handleVideoSkip} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#000000] flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         {/* Progress Bar */}
         <div className="mb-8">
@@ -196,7 +196,7 @@ export default function OnboardingPage() {
             </span>
             <span className="text-sm text-gray-400">{Math.round(progress)}%</span>
           </div>
-          <div className="w-full h-2 bg-[#242424] rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-[#000000] rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-[#cba2ff] to-[#b88ff5] transition-all duration-300"
               style={{ width: `${progress}%` }}
@@ -205,7 +205,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Main Card */}
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-8 shadow-2xl">
+        <div className="bg-[#000000] border border-[#000000] rounded-lg p-8 shadow-2xl">
           {/* Step Title */}
           <h2 className="text-2xl font-semibold text-white mb-2">{currentStepData.title}</h2>
           <p className="text-lg text-gray-300 mb-8">{currentStepData.question}</p>
@@ -218,7 +218,7 @@ export default function OnboardingPage() {
                 value={formData[currentStepData.field as keyof OnboardingData] || ''}
                 onChange={(e) => handleInputChange(e.target.value)}
                 placeholder={currentStepData.placeholder}
-                className="w-full px-4 py-3 bg-[#242424] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 focus:border-[#cba2ff] transition-all"
+                className="w-full px-4 py-3 bg-[#000000] border border-[#000000] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 focus:border-[#cba2ff] transition-all"
                 autoFocus
               />
             )}
@@ -232,7 +232,7 @@ export default function OnboardingPage() {
                     className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
                       formData[currentStepData.field as keyof OnboardingData] === option
                         ? 'bg-[#cba2ff]/20 border-[#cba2ff] text-white'
-                        : 'bg-[#242424] border-[#2a2a2a] text-gray-300 hover:border-[#cba2ff]/50 hover:bg-[#2a2a2a]'
+                        : 'bg-[#000000] border-[#000000] text-gray-300 hover:border-[#cba2ff]/50 hover:bg-[#000000]'
                     }`}
                   >
                     {option}
@@ -247,7 +247,7 @@ export default function OnboardingPage() {
                 onChange={(e) => handleInputChange(e.target.value)}
                 placeholder={currentStepData.placeholder}
                 rows={4}
-                className="w-full px-4 py-3 bg-[#242424] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 focus:border-[#cba2ff] transition-all resize-none"
+                className="w-full px-4 py-3 bg-[#000000] border border-[#000000] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 focus:border-[#cba2ff] transition-all resize-none"
                 autoFocus
               />
             )}
@@ -267,8 +267,8 @@ export default function OnboardingPage() {
               disabled={currentStep === 0}
               className={`px-6 py-3 rounded-lg font-medium transition-all ${
                 currentStep === 0
-                  ? 'bg-[#242424] text-gray-600 cursor-not-allowed'
-                  : 'bg-[#242424] text-gray-300 hover:bg-[#2a2a2a] border border-[#2a2a2a]'
+                  ? 'bg-[#000000] text-gray-600 cursor-not-allowed'
+                  : 'bg-[#000000] text-gray-300 hover:bg-[#000000] border border-[#000000]'
               }`}
             >
               Back

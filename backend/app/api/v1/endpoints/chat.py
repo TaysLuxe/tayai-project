@@ -7,7 +7,7 @@ Provides:
 - WebSocket endpoint for real-time bidirectional chat
 - Chat history management
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, File, Form, HTTPException, status, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -23,6 +23,8 @@ from app.schemas.chat import (
     ListConversationsResponse,
     ConversationSummary,
     ConversationMessagesResponse,
+    VoiceRequest,
+    VoiceResponse,
 )
 from app.services.chat_service import ChatService
 from app.services.usage_service import UsageService
@@ -80,6 +82,85 @@ async def send_message(
     )
     
     return response
+
+
+@router.post("/voice", response_model=VoiceResponse)
+@handle_service_errors
+async def process_voice(
+    request: VoiceRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(check_usage_limit_dependency)
+):
+    """
+    Process voice input: DICTATION (return transcript as-is) or USER_VOICE (LLM response).
+    Mode must be 'dictation' or 'user_voice'.
+    """
+    sanitized = sanitize_user_input(request.transcript)
+    chat_service = ChatService(db)
+    result = await chat_service.process_voice(transcript=sanitized, mode=request.mode)
+    if request.mode == "user_voice" and result.tokens_used:
+        usage_service = UsageService(db)
+        await usage_service.record_usage(
+            user_id=current_user["user_id"],
+            tokens_used=result.tokens_used,
+        )
+    return result
+
+
+# Max size for voice speak upload (e.g. 25MB for Whisper limit)
+VOICE_SPEAK_MAX_BYTES = 25 * 1024 * 1024
+
+
+@router.post("/voice/speak")
+@handle_service_errors
+async def voice_speak(
+    audio: UploadFile = File(..., description="Audio recording (webm, mp3, wav, etc.)"),
+    voice: str = Form("alloy", description="TTS voice: alloy, echo, fable, onyx, nova, shimmer"),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(check_usage_limit_dependency),
+):
+    """
+    Capture voice: upload audio -> transcribe (Whisper) -> LLM -> TTS -> stream audio back.
+    Returns response with headers X-Transcript and X-Response-Text (URL-encoded), body = audio/mpeg stream.
+    """
+    from urllib.parse import quote
+
+    if not audio.content_type and not audio.filename:
+        raise HTTPException(status_code=400, detail="Audio file required")
+    content = await audio.read()
+    if len(content) > VOICE_SPEAK_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="Audio file too large (max 25MB)")
+    if len(content) < 100:
+        raise HTTPException(status_code=400, detail="Audio too short to transcribe")
+
+    chat_service = ChatService(db)
+    try:
+        transcript_text, response_text, tokens_used, audio_stream = await chat_service.speak_from_audio(
+            audio_bytes=content,
+            audio_filename=audio.filename or "audio.webm",
+            voice=voice.strip() or "alloy",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if tokens_used:
+        usage_service = UsageService(db)
+        await usage_service.record_usage(
+            user_id=current_user["user_id"],
+            tokens_used=tokens_used,
+        )
+
+    headers = {
+        "X-Transcript": quote(transcript_text),
+        "X-Response-Text": quote(response_text),
+        "Content-Type": "audio/mpeg",
+    }
+
+    return StreamingResponse(
+        audio_stream,
+        media_type="audio/mpeg",
+        headers=headers,
+    )
 
 
 @router.post("/stream")

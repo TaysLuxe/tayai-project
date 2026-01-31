@@ -28,27 +28,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if user is already logged in
     const checkAuth = async () => {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        try {
-          const userData = await authApi.verify();
-          if (userData.valid) {
-            setUser({
-              user_id: userData.user_id,
-              username: userData.username,
-              tier: userData.tier,
-              is_admin: userData.is_admin,
-            });
-          } else {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-          }
-        } catch (error) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Auth check timeout')), 8000)
+        );
+        const userData = await Promise.race([authApi.verify(), timeout]);
+        if (userData.valid) {
+          setUser({
+            user_id: userData.user_id,
+            username: userData.username,
+            tier: userData.tier,
+            is_admin: userData.is_admin,
+          });
+        } else {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
         }
+      } catch (error) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     checkAuth();

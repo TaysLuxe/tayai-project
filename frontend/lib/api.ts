@@ -56,10 +56,13 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 export const authApi = {
   async login(username: string, password: string): Promise<{ access_token: string; refresh_token: string; token_type: string; expires_in: number }> {
+    const body = new URLSearchParams({ username, password });
     const res = await fetch(`${apiBase()}/auth/login`, {
       method: 'POST',
-      headers: getHeaders(false),
-      body: JSON.stringify({ username, password }),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
     });
     return handleResponse(res);
   },
@@ -77,6 +80,24 @@ export const authApi = {
     const res = await fetch(`${apiBase()}/auth/verify`, {
       method: 'GET',
       headers: getHeaders(true),
+    });
+    return handleResponse(res);
+  },
+
+  async requestPasswordReset(email: string): Promise<{ message: string; reset_link?: string }> {
+    const res = await fetch(`${apiBase()}/auth/password/reset-request`, {
+      method: 'POST',
+      headers: getHeaders(false),
+      body: JSON.stringify({ email }),
+    });
+    return handleResponse(res);
+  },
+
+  async confirmPasswordReset(token: string, newPassword: string): Promise<{ message: string }> {
+    const res = await fetch(`${apiBase()}/auth/password/reset-confirm`, {
+      method: 'POST',
+      headers: getHeaders(false),
+      body: JSON.stringify({ token, new_password: newPassword }),
     });
     return handleResponse(res);
   },
@@ -215,5 +236,48 @@ export const chatApi = {
       headers: getHeaders(true),
     });
     return handleResponse(res);
+  },
+
+  /** Voice engine: dictation (return transcript) or user_voice (LLM response). */
+  async processVoice(
+    transcript: string,
+    mode: 'dictation' | 'user_voice'
+  ): Promise<{ text: string; tokens_used: number }> {
+    const res = await fetch(`${apiBase()}/chat/voice`, {
+      method: 'POST',
+      headers: getHeaders(true),
+      body: JSON.stringify({ transcript: transcript.trim(), mode }),
+    });
+    return handleResponse(res);
+  },
+
+  /**
+   * Send recorded audio for server-side STT + LLM + TTS; returns streamed audio response.
+   * Response headers: X-Transcript (user speech), X-Response-Text (assistant text). Body: audio/mpeg stream.
+   */
+  async speakWithAudio(audioBlob: Blob, voice: string = 'alloy'): Promise<Response> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const form = new FormData();
+    form.append('audio', audioBlob, 'audio.webm');
+    form.append('voice', voice);
+    const res = await fetch(`${apiBase()}/chat/voice/speak`, {
+      method: 'POST',
+      headers,
+      body: form,
+    });
+    if (!res.ok) {
+      const err: any = new Error(res.statusText || 'Request failed');
+      err.status = res.status;
+      err.response = res;
+      try {
+        err.data = await res.json();
+      } catch {
+        err.data = { detail: await res.text() };
+      }
+      throw err;
+    }
+    return res;
   },
 };

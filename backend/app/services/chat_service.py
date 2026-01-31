@@ -40,10 +40,11 @@ from app.core.prompts import (
     detect_instagram_intent,
     get_instagram_intelligence_prompt,
 )
+from app.core.prompts.voice import VOICE_SYSTEM_PROMPT
 from app.db.models import ChatMessage, Conversation, MissingKBItem, QuestionLog, User
 from app.services.rag_service import RAGService, ContextResult
 from app.services.user_service import UserService
-from app.schemas.chat import ChatResponse
+from app.schemas.chat import ChatResponse, VoiceResponse
 import re
 from datetime import datetime, timezone
 
@@ -207,6 +208,107 @@ class ChatService:
                 tokens_used=0,
                 message_id=None
             )
+
+    async def process_voice(self, transcript: str, mode: str) -> VoiceResponse:
+        """
+        Process voice input in DICTATION or USER_VOICE mode.
+        DICTATION: return transcript as-is (no LLM).
+        USER_VOICE: interpret intent and return assistant response.
+        """
+        if mode == "dictation":
+            return VoiceResponse(text=transcript.strip(), tokens_used=0)
+        # user_voice: call LLM with voice system prompt
+        messages = [
+            {"role": "system", "content": VOICE_SYSTEM_PROMPT},
+            {"role": "user", "content": transcript.strip()},
+        ]
+        try:
+            response = await get_openai_client().chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=min(512, self.MAX_TOKENS),
+            )
+            content = (response.choices[0].message.content or "").strip()
+            tokens_used = response.usage.total_tokens if response.usage else 0
+            return VoiceResponse(text=content, tokens_used=tokens_used)
+        except Exception as e:
+            logger.exception("Voice (user_voice) LLM error: %s", e)
+            return VoiceResponse(
+                text="Sorry, I couldn't process that. Please try again.",
+                tokens_used=0,
+            )
+
+    async def speak_from_audio(
+        self,
+        audio_bytes: bytes,
+        audio_filename: str,
+        voice: str = "alloy",
+        language: Optional[str] = None,
+    ) -> tuple[str, str, int, AsyncGenerator[bytes, None]]:
+        """
+        Transcribe audio with Whisper, get LLM response, generate TTS and stream.
+        Returns (transcript, response_text, tokens_used, audio_chunk_generator).
+        """
+        import io
+
+        client = get_openai_client()
+        audio_file = io.BytesIO(audio_bytes)
+        # OpenAI uses filename extension for format; .name is used by the client
+        ext = "webm"
+        if any(audio_filename.lower().endswith(e) for e in (".mp3", ".wav", ".m4a", ".ogg", ".mpga", ".mpeg", ".mp4", ".flac")):
+            ext = audio_filename.rsplit(".", 1)[-1].lower()
+        audio_file.name = f"audio.{ext}"
+
+        try:
+            transcript_obj = await client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+            )
+        except Exception as e:
+            logger.exception("Whisper transcription error: %s", e)
+            raise ValueError("Could not transcribe audio. Please try again.") from e
+
+        transcript_text = (getattr(transcript_obj, "text", None) or "").strip()
+        if not transcript_text:
+            raise ValueError("No speech detected in the audio.")
+
+        voice_result = await self.process_voice(transcript=transcript_text, mode="user_voice")
+        response_text = voice_result.text.strip()
+        tokens_used = voice_result.tokens_used
+
+        tts_model = getattr(settings, "OPENAI_TTS_MODEL", "tts-1")
+        try:
+            response = await client.audio.speech.create(
+                model=tts_model,
+                voice=voice,
+                input=response_text[:4096],
+                response_format="mp3",
+            )
+            body: bytes = b""
+            if hasattr(response, "content"):
+                body = response.content or b""
+            if not body and hasattr(response, "read"):
+                try:
+                    read_result = response.read()
+                    if hasattr(read_result, "__await__"):
+                        body = await read_result
+                    else:
+                        body = read_result
+                except Exception:
+                    pass
+            if not body and hasattr(response, "iter_bytes"):
+                body = b"".join([chunk async for chunk in response.iter_bytes()])
+
+            async def stream_audio() -> AsyncGenerator[bytes, None]:
+                chunk_size = 8192
+                for i in range(0, len(body), chunk_size):
+                    yield body[i : i + chunk_size]
+
+            return transcript_text, response_text, tokens_used, stream_audio()
+        except Exception as e:
+            logger.exception("TTS error: %s", e)
+            raise ValueError("Could not generate speech. Please try again.") from e
     
     async def _generate_response_with_ban_check(self, messages: List[Dict]) -> tuple:
         """

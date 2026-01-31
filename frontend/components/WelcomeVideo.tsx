@@ -48,7 +48,7 @@ export default function WelcomeVideo({ videoUrl, onComplete, onSkip }: WelcomeVi
   };
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+    <div className="relative w-full max-w-4xl mx-auto bg-[#000000] border border-[#000000] rounded-lg overflow-hidden">
       {/* Video Player */}
       <div className="relative aspect-video bg-black">
         {defaultVideoUrl ? (
@@ -146,14 +146,14 @@ export default function WelcomeVideo({ videoUrl, onComplete, onSkip }: WelcomeVi
             <>
               <button
                 onClick={handleSkip}
-                className="px-6 py-3 bg-[#242424] text-gray-300 rounded-lg font-medium hover:bg-[#2a2a2a] border border-[#2a2a2a] transition-all"
+                className="px-6 py-3 bg-[#000000] text-gray-300 rounded-lg font-medium hover:bg-[#000000] border border-[#000000] transition-all"
               >
                 Skip Video
               </button>
               {isPlaying && (
                 <button
                   onClick={handlePause}
-                  className="px-6 py-3 bg-[#242424] text-gray-300 rounded-lg font-medium hover:bg-[#2a2a2a] border border-[#2a2a2a] transition-all"
+                  className="px-6 py-3 bg-[#000000] text-gray-300 rounded-lg font-medium hover:bg-[#000000] border border-[#000000] transition-all"
                 >
                   Pause
                 </button>

@@ -3,7 +3,9 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import ChatWidget from '../components/ChatWidget';
+import TayAIAvatar from '../components/TayAIAvatar';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { profileApi, chatApi, type ConversationSummary } from '../lib/api';
@@ -236,7 +238,7 @@ export default function Dashboard() {
 
   if (loading || checkingOnboarding) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0f0f0f]">
+      <div className="flex items-center justify-center min-h-screen bg-[#000000]">
         <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
           <p className="mt-4 text-gray-400 text-sm">{t.common.loading}</p>
@@ -245,7 +247,16 @@ export default function Dashboard() {
     );
   }
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#000000]">
+        <div className="text-center px-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
+          <p className="mt-4 text-gray-400 text-sm">Redirecting to sign in...</p>
+        </div>
+      </div>
+    );
+  }
 
   const SidebarContent = (
     <div className={`flex h-full flex-col bg-[#1a1a1a] border-r border-[#2a2a2a] overflow-hidden transition-all duration-300 ${
@@ -255,12 +266,12 @@ export default function Dashboard() {
       <div className="p-4 border-b border-[#2a2a2a] flex items-center justify-between">
         {!isSidebarCollapsed && (
           <Image
-            src="/logo.png"
+            src="/brand-logo--icon.png"
             alt="Tays Luxe Academy"
-            width={100}
-            height={50}
+            width={25}
+            height={25}
             className="h-auto"
-            style={{ width: '120px' }}
+            style={{ width: '25px' }}
             priority
           />
         )}
@@ -318,14 +329,14 @@ export default function Dashboard() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t.dashboard.searchChats}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-[#242424] border border-[#2a2a2a] rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#cba2ff]/70 focus:border-[#cba2ff]"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#cba2ff]/70 focus:border-[#cba2ff]"
             />
           </div>
 
           {/* Projects */}
           <div className="space-y-1">
             <p className="text-[11px] uppercase tracking-wide text-gray-500">{t.dashboard.projects}</p>
-            <button className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-200 bg-[#242424] rounded-md hover:bg-[#2a2a2a] transition-colors">
+            <button className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-200 bg-[#1a1a1a] rounded-md hover:bg-[#242424] transition-colors">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-[#cba2ff]/15 text-[#cba2ff] text-[11px]">
                 TA
               </span>
@@ -360,7 +371,7 @@ export default function Dashboard() {
                 setShowHistoryDropdown((prev) => !prev);
                 if (opening) refreshHistory();
               }}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs bg-[#242424] border border-[#2a2a2a] rounded-md text-gray-200 hover:border-[#cba2ff]/70 focus:outline-none focus:ring-1 focus:ring-[#cba2ff]/70"
+              className="w-full flex items-center justify-between px-3 py-2 text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-gray-200 hover:border-[#cba2ff]/70 focus:outline-none focus:ring-1 focus:ring-[#cba2ff]/70"
             >
               <span className="truncate">
                 {filteredHistory.length === 0 ? t.dashboard.yourChats : selectedChatTitle || t.dashboard.yourChats}
@@ -376,7 +387,7 @@ export default function Dashboard() {
             </button>
 
             {showHistoryDropdown && (
-              <div className="absolute mt-1 w-full bg-[#111111] border border-[#2a2a2a] rounded-md shadow-xl z-20 max-h-56 overflow-y-auto">
+              <div className="absolute mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md shadow-xl z-20 max-h-56 overflow-y-auto">
                 {historyLoading ? (
                   <div className="px-3 py-4 text-center text-xs text-gray-500">{t.common.loading}</div>
                 ) : filteredHistory.length > 0 ? (
@@ -414,29 +425,6 @@ export default function Dashboard() {
 
             {/* Menu Items */}
             <div className="px-2 py-1 space-y-0.5 relative overflow-visible">
-              {/* Settings */}
-              <button
-                onClick={() => {
-                  setShowSettingsModal(true);
-                  setShowUserMenu(false);
-                }}
-                className="w-full flex items-center justify-between px-2 py-2 text-sm text-gray-300 hover:bg-[#242424] rounded-md transition-colors group"
-              >
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                    />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>{t.common.settings}</span>
-                </div>
-                <span className="text-xs text-gray-500 group-hover:text-gray-400">⇧⌘,</span>
-              </button>
-
               {/* Language */}
               <div className="relative" data-dropdown>
                 <button
@@ -445,7 +433,7 @@ export default function Dashboard() {
                     setShowLearnMoreMenu(false);
                   }}
                   className={`w-full flex items-center justify-between px-2 py-2 text-sm text-gray-300 hover:bg-[#242424] rounded-md transition-colors ${
-                    showLanguageMenu ? 'bg-[#242424]' : ''
+                    showLanguageMenu ? 'bg-[#1a1a1a]' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -474,7 +462,7 @@ export default function Dashboard() {
                           <button
                             key={langCode}
                             className={`w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#242424] flex items-center justify-between ${
-                              isSelected ? 'bg-[#242424]' : ''
+                              isSelected ? 'bg-[#1a1a1a]' : ''
                             }`}
                             onClick={() => {
                               setLanguage(langCode);
@@ -512,7 +500,7 @@ export default function Dashboard() {
                     setShowLearnMoreMenu(false);
                   }}
                   className={`w-full flex items-center justify-between px-2 py-2 text-sm text-gray-300 hover:bg-[#242424] rounded-md transition-colors ${
-                    showHelpMenu ? 'bg-[#242424]' : ''
+                    showHelpMenu ? 'bg-[#1a1a1a]' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -558,6 +546,7 @@ export default function Dashboard() {
                           },
                           {
                             label: t.dashboard.releaseNotes,
+                            href: '/release-notes',
                             icon: (
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -580,16 +569,28 @@ export default function Dashboard() {
                               </svg>
                             ),
                           },
-                        ].map((item, idx) => (
-                          <button
-                            key={idx}
-                            className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#242424] flex items-center gap-2"
-                            onClick={() => setShowHelpMenu(false)}
-                          >
-                            <span className="text-gray-400">{item.icon}</span>
-                            <span>{item.label}</span>
-                          </button>
-                        ))}
+                        ].map((item, idx) =>
+                          'href' in item && item.href ? (
+                            <Link
+                              key={idx}
+                              href={item.href}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#242424] flex items-center gap-2"
+                              onClick={() => setShowHelpMenu(false)}
+                            >
+                              <span className="text-gray-400">{item.icon}</span>
+                              <span>{item.label}</span>
+                            </Link>
+                          ) : (
+                            <button
+                              key={idx}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#242424] flex items-center gap-2"
+                              onClick={() => setShowHelpMenu(false)}
+                            >
+                              <span className="text-gray-400">{item.icon}</span>
+                              <span>{item.label}</span>
+                            </button>
+                          )
+                        )}
                       </div>
                     </div>
                   </>
@@ -604,7 +605,7 @@ export default function Dashboard() {
                     setShowLanguageMenu(false);
                   }}
                   className={`w-full flex items-center justify-between px-2 py-2 text-sm text-gray-300 hover:bg-[#242424] rounded-md transition-colors ${
-                    showLearnMoreMenu ? 'bg-[#242424]' : ''
+                    showLearnMoreMenu ? 'bg-[#1a1a1a]' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -634,7 +635,7 @@ export default function Dashboard() {
                         { label: t.dashboard.keyboardShortcuts, shortcut: '⌘/' },
                       ].map((item, idx) => {
                         if (item.label === 'divider') {
-                          return <div key={idx} className="h-px bg-[#2a2a2a] my-1"></div>;
+                          return <div key={idx} className="h-px bg-[#1a1a1a] my-1"></div>;
                         }
                         return (
                           <button
@@ -727,9 +728,9 @@ export default function Dashboard() {
               }
             }}
             className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-colors group ${
-              showUserMenu ? 'bg-[#242424]' : 'hover:bg-[#242424]'
+              showUserMenu ? 'bg-[#1a1a1a]' : 'hover:bg-[#242424]'
             } ${isSidebarCollapsed ? 'justify-center' : ''}`}
-            title={isSidebarCollapsed ? `${user?.username || 'User'} - ${user?.tier || 'Basic'} plan` : ''}
+            title={isSidebarCollapsed ? `${user?.username || 'User'} - ${(user?.tier?.toLowerCase() === 'vip' ? 'VIP User' : `${user?.tier || 'Basic'} plan`)}` : ''}
           >
             {/* Avatar */}
             <div className="relative flex items-center justify-center">
@@ -756,7 +757,7 @@ export default function Dashboard() {
               <>
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-sm font-medium text-white truncate">{user?.username || 'User'}</p>
-                  <p className="text-xs text-gray-500 capitalize">{user?.tier || 'Basic'} plan</p>
+                  <p className="text-xs text-gray-500">{user?.tier?.toLowerCase() === 'vip' ? 'VIP User' : `${user?.tier || 'Basic'} plan`}</p>
                 </div>
 
                 {/* Dropdown indicator */}
@@ -777,7 +778,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#0f0f0f]">
+    <div className="flex min-h-screen bg-[#000000]">
       {/* Desktop sidebar */}
       <aside className="hidden md:block">
         {SidebarContent}
@@ -797,9 +798,9 @@ export default function Dashboard() {
       )}
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col bg-[#0f0f0f]">
+      <main className="flex-1 flex flex-col bg-[#000000]">
         {/* Chat Header */}
-        <header className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[#2a2a2a] bg-[#1a1a1a]">
+        <header className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[#2a2a2a] bg-[#000000]">
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
             <button
@@ -812,14 +813,8 @@ export default function Dashboard() {
             </button>
 
             {/* AI Avatar */}
-            <div className="w-12 h-12 rounded-full overflow-hidden shadow-lg shadow-[#cba2ff]/20">
-              <Image
-                src="/tayai-avatar.png"
-                alt="TayAI"
-                width={48}
-                height={48}
-                className="w-full h-full object-cover"
-              />
+            <div className="shadow-lg shadow-[#cba2ff]/20">
+              <TayAIAvatar size={48} />
             </div>
 
             {/* Title & Status */}
@@ -971,7 +966,7 @@ export default function Dashboard() {
                         onClick={() => setSettingsCategory(item.id)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-md transition-colors ${
                           settingsCategory === item.id
-                            ? 'bg-[#242424] text-white'
+                            ? 'bg-[#1a1a1a] text-white'
                             : 'text-gray-300 hover:bg-[#242424]'
                         }`}
                       >
@@ -989,7 +984,7 @@ export default function Dashboard() {
                       <h3 className="text-xl font-semibold text-white mb-4">{t.settings.general}</h3>
                       
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a] mb-0"></div>
+                      <div className="h-px bg-[#1a1a1a] mb-0"></div>
                       
                       {/* Appearance */}
                       <div className="flex items-center justify-between py-3 border-b border-[#2a2a2a]">
@@ -1000,7 +995,7 @@ export default function Dashboard() {
                             setAppearance(e.target.value);
                             localStorage.setItem('tayai_appearance', e.target.value);
                           }}
-                          className="px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
+                          className="px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
                         >
                           <option value="system">{t.settings.system}</option>
                           <option value="light">{t.settings.light}</option>
@@ -1017,7 +1012,7 @@ export default function Dashboard() {
                             setAccentColor(e.target.value);
                             localStorage.setItem('tayai_accent_color', e.target.value);
                           }}
-                          className="px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
+                          className="px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
                         >
                           <option value="default">{t.settings.default}</option>
                           <option value="purple">{t.settings.purple}</option>
@@ -1033,7 +1028,7 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between py-3 border-b border-[#2a2a2a]">
                         <label className="text-sm font-medium text-gray-300">{t.common.language}</label>
                         <select 
-                          className="px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
+                          className="px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[120px]"
                           value={language}
                           onChange={(e) => setLanguage(e.target.value as Language)}
                         >
@@ -1054,7 +1049,7 @@ export default function Dashboard() {
                             setSpokenLanguage(e.target.value);
                             localStorage.setItem('tayai_spoken_language', e.target.value);
                           }}
-                          className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
+                          className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
                         >
                           <option value="auto-detect">{t.settings.autoDetect}</option>
                           <option value="akk">Akkadian</option>
@@ -1116,7 +1111,7 @@ export default function Dashboard() {
                               // Voice preview functionality can be added here
                               console.log('Preview voice:', voice);
                             }}
-                            className="p-2 bg-[#242424] border border-[#2a2a2a] rounded-full hover:bg-[#2a2a2a] transition-colors"
+                            className="p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-full hover:bg-[#242424] transition-colors"
                           >
                             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M8 5v14l11-7z" />
@@ -1128,7 +1123,7 @@ export default function Dashboard() {
                               setVoice(e.target.value);
                               localStorage.setItem('tayai_voice', e.target.value);
                             }}
-                            className="flex-1 px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
+                            className="flex-1 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
                           >
                             <option value="vale">Vale</option>
                             <option value="alloy">Alloy</option>
@@ -1155,7 +1150,7 @@ export default function Dashboard() {
                             localStorage.setItem('tayai_separate_voice', String(newValue));
                           }}
                           className={`ml-4 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            separateVoice ? 'bg-[#cba2ff]' : 'bg-[#2a2a2a]'
+                            separateVoice ? 'bg-[#cba2ff]' : 'bg-[#1a1a1a]'
                           }`}
                         >
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -1174,7 +1169,7 @@ export default function Dashboard() {
                             localStorage.setItem('tayai_show_additional_models', String(newValue));
                           }}
                           className={`ml-4 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            showAdditionalModels ? 'bg-[#cba2ff]' : 'bg-[#2a2a2a]'
+                            showAdditionalModels ? 'bg-[#cba2ff]' : 'bg-[#1a1a1a]'
                           }`}
                         >
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -1198,7 +1193,7 @@ export default function Dashboard() {
                               Get notified when Tay AI responds to requests that take time, like research or image generation.
                             </p>
                           </div>
-                          <select className="ml-4 px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
+                          <select className="ml-4 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
                             <option>Push</option>
                             <option>Email</option>
                             <option>Push, Email</option>
@@ -1208,7 +1203,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Tasks */}
                       <div className="space-y-2">
@@ -1222,7 +1217,7 @@ export default function Dashboard() {
                               </button>
                             </p>
                           </div>
-                          <select className="ml-4 px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
+                          <select className="ml-4 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
                             <option>Push, Email</option>
                             <option>Push</option>
                             <option>Email</option>
@@ -1232,7 +1227,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Projects */}
                       <div className="space-y-2">
@@ -1243,7 +1238,7 @@ export default function Dashboard() {
                               Get notified when you receive an email invitation to a shared project.
                             </p>
                           </div>
-                          <select className="ml-4 px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
+                          <select className="ml-4 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
                             <option>Email</option>
                             <option>Push</option>
                             <option>Push, Email</option>
@@ -1253,7 +1248,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Recommendations */}
                       <div className="space-y-2">
@@ -1264,7 +1259,7 @@ export default function Dashboard() {
                               Stay in the loop on new tools, tips, and features from Tay AI.
                             </p>
                           </div>
-                          <select className="ml-4 px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
+                          <select className="ml-4 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
                             <option>Push, Email</option>
                             <option>Push</option>
                             <option>Email</option>
@@ -1285,7 +1280,7 @@ export default function Dashboard() {
                         <p className="text-xs text-gray-400">
                           Set the style and tone of how Tay AI responds to you. This doesn&apos;t impact Tay AI&apos;s capabilities.
                         </p>
-                        <select className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
+                        <select className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
                           <option>Default</option>
                           <option>Formal</option>
                           <option>Casual</option>
@@ -1295,7 +1290,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Characteristics */}
                       <div className="space-y-4">
@@ -1308,7 +1303,7 @@ export default function Dashboard() {
                         {['Warm', 'Enthusiastic', 'Headers & Lists', 'Emoji'].map((char) => (
                           <div key={char} className="flex items-center justify-between">
                             <label className="text-sm text-gray-300">{char}</label>
-                            <select className="px-3 py-1.5 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
+                            <select className="px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-xs focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-w-[100px]">
                               <option>Default</option>
                               <option>More</option>
                               <option>Less</option>
@@ -1318,19 +1313,19 @@ export default function Dashboard() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Custom instructions */}
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-white">Custom instructions</h4>
                         <textarea
                           placeholder="Additional behavior, style, and tone preferences"
-                          className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-h-[100px] resize-y"
+                          className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50 min-h-[100px] resize-y"
                         />
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* About you */}
                       <div className="space-y-4">
@@ -1341,7 +1336,7 @@ export default function Dashboard() {
                           <input
                             type="text"
                             placeholder="What should Tay AI call you?"
-                            className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
+                            className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
                           />
                         </div>
 
@@ -1350,7 +1345,7 @@ export default function Dashboard() {
                           <input
                             type="text"
                             placeholder="Your occupation"
-                            className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
+                            className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
                           />
                         </div>
 
@@ -1359,13 +1354,13 @@ export default function Dashboard() {
                           <input
                             type="text"
                             placeholder="Interests, values, or preferences to keep in mind"
-                            className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
+                            className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
                           />
                         </div>
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Memory */}
                       <div className="space-y-3">
@@ -1399,7 +1394,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Record mode */}
                       <div className="space-y-3">
@@ -1424,7 +1419,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Advanced */}
                       <div className="space-y-3">
@@ -1505,7 +1500,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* Divider */}
-                      <div className="h-px bg-[#2a2a2a]"></div>
+                      <div className="h-px bg-[#1a1a1a]"></div>
 
                       {/* Tay AI Builder Profile */}
                       <div className="space-y-4">
@@ -1517,8 +1512,8 @@ export default function Dashboard() {
                         </div>
 
                         {/* Tay AI Preview Card */}
-                        <div className="relative bg-[#242424] border border-[#2a2a2a] rounded-lg p-6">
-                          <button className="absolute top-3 right-3 px-2 py-1 text-xs font-medium text-white bg-[#1a1a1a] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
+                        <div className="relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-6">
+                          <button className="absolute top-3 right-3 px-2 py-1 text-xs font-medium text-white bg-[#1a1a1a] border border-[#2a2a2a] rounded-md hover:bg-[#242424] transition-colors">
                             Preview
                           </button>
                           <div className="flex flex-col items-center text-center space-y-3">
@@ -1554,12 +1549,12 @@ export default function Dashboard() {
                           <input
                             type="text"
                             value={user?.username || ''}
-                            className="w-full px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
+                            className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50"
                           />
                         </div>
 
                         {/* Divider */}
-                        <div className="h-px bg-[#2a2a2a]"></div>
+                        <div className="h-px bg-[#1a1a1a]"></div>
 
                         {/* Links */}
                         <div className="space-y-3">
@@ -1570,7 +1565,7 @@ export default function Dashboard() {
                             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                             </svg>
-                            <select className="flex-1 px-3 py-2 bg-[#242424] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
+                            <select className="flex-1 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#cba2ff]/50">
                               <option>Select a domain</option>
                             </select>
                           </div>
@@ -1583,7 +1578,7 @@ export default function Dashboard() {
                               </svg>
                               <span className="text-sm text-gray-300">LinkedIn</span>
                             </div>
-                            <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
+                            <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#1a1a1a] border border-[#2a2a2a] rounded-md hover:bg-[#242424] transition-colors">
                               Add
                             </button>
                           </div>
@@ -1596,14 +1591,14 @@ export default function Dashboard() {
                               </svg>
                               <span className="text-sm text-gray-300">GitHub</span>
                             </div>
-                            <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#242424] border border-[#2a2a2a] rounded-md hover:bg-[#2a2a2a] transition-colors">
+                            <button className="px-3 py-1.5 text-xs font-medium text-white bg-[#1a1a1a] border border-[#2a2a2a] rounded-md hover:bg-[#242424] transition-colors">
                               Add
                             </button>
                           </div>
                         </div>
 
                         {/* Divider */}
-                        <div className="h-px bg-[#2a2a2a]"></div>
+                        <div className="h-px bg-[#1a1a1a]"></div>
 
                         {/* Email */}
                         <div className="space-y-2">
@@ -1618,7 +1613,7 @@ export default function Dashboard() {
                             <input
                               type="checkbox"
                               id="feedback-emails"
-                              className="w-4 h-4 rounded border-[#2a2a2a] bg-[#242424] text-[#cba2ff] focus:ring-2 focus:ring-[#cba2ff]/50"
+                              className="w-4 h-4 rounded border-[#2a2a2a] bg-[#1a1a1a] text-[#cba2ff] focus:ring-2 focus:ring-[#cba2ff]/50"
                             />
                             <label htmlFor="feedback-emails" className="text-xs text-gray-400 cursor-pointer">
                               Receive feedback emails

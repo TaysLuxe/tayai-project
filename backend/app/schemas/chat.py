@@ -41,6 +41,12 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[int] = None  # Session: omit for new chat, send for continuing
 
 
+class VoiceRequest(BaseModel):
+    """Request for voice/dictation processing (DICTATION or USER_VOICE mode)."""
+    transcript: str = Field(..., min_length=1, max_length=4000)
+    mode: str = Field(..., pattern="^(dictation|user_voice)$")
+
+
 class PersonaTestRequest(BaseModel):
     """Request for testing persona responses."""
     message: str = Field(..., min_length=1, max_length=4000)
@@ -69,6 +75,12 @@ class ChatResponse(BaseModel):
     message_id: Optional[int] = None
     conversation_id: Optional[int] = None  # Session: use for subsequent messages
     sources: Optional[List[SourceInfo]] = None
+
+
+class VoiceResponse(BaseModel):
+    """Response from voice endpoint (dictation or user_voice)."""
+    text: str
+    tokens_used: int = 0
 
 
 class ChatHistoryResponse(BaseModel):

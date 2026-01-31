@@ -111,6 +111,7 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_MODEL: str = os.getenv(
         "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"
     )
+    OPENAI_TTS_MODEL: str = os.getenv("OPENAI_TTS_MODEL", "tts-1")  # tts-1 (fast) or tts-1-hd
     
     # Usage Limits
     BASIC_MEMBER_MESSAGES_PER_MONTH: int = int(

@@ -52,7 +52,7 @@ function LoginForm() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0f0f0f]">
+      <div className="flex items-center justify-center min-h-screen bg-[#000000]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
             <p className="mt-4 text-gray-400">{t.common.loading}</p>
@@ -62,16 +62,16 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0f0f0f]">
+    <div className="flex min-h-screen flex-col bg-[#000000]">
       <div className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
           {/* Logo */}
           <div className="flex justify-center mb-4">
             <Image
-              src="/logo.png"
+              src="/brand-logo--full.png"
               alt="Tays Luxe Academy"
-              width={140}
-              height={56}
+              width={200}
+              height={80}
               className="h-auto"
               style={{ width: '200px' }}
               priority
@@ -80,7 +80,7 @@ function LoginForm() {
           </div>
 
           {/* Form Card */}
-          <div className="bg-[#1a1a1a] shadow-xl rounded-2xl p-8 space-y-6 border border-[#2a2a2a]">
+          <div className="bg-[#111111] shadow-xl rounded-2xl p-8 space-y-6 border border-[#111111]">
             <div className="text-center">
               <h2 className="text-2xl font-semibold text-white">
                 {t.auth.welcomeBack}
@@ -133,7 +133,7 @@ function LoginForm() {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="block w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 py-2 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
+                  className="block w-full rounded-lg border border-[#000000] bg-[#000000] px-3 py-2 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
                   placeholder={t.auth.username}
                 />
               </div>
@@ -151,7 +151,7 @@ function LoginForm() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 py-2 pr-10 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
+                    className="block w-full rounded-lg border border-[#000000] bg-[#000000] px-3 py-2 pr-10 text-white placeholder-gray-500 focus:border-[#cba2ff] focus:outline-none focus:ring-1 focus:ring-[#cba2ff] sm:text-sm"
                     placeholder={t.auth.password}
                   />
                   <button
@@ -174,14 +174,13 @@ function LoginForm() {
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
+                <div className="flex items-center gap-2">
                   <input
                     id="remember-me"
                     name="remember-me"
                     type="checkbox"
-                    className="h-4 w-4 rounded border-[#2a2a2a] bg-[#242424] text-[#cba2ff] focus:ring-[#cba2ff]"
                   />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-400">
+                  <label htmlFor="remember-me" className="block text-sm text-gray-400 cursor-pointer select-none">
                     Remember me
                   </label>
                 </div>
@@ -228,7 +227,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-[#0f0f0f]">
+      <div className="flex items-center justify-center min-h-screen bg-[#000000]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#cba2ff] mx-auto"></div>
           <p className="mt-4 text-gray-400">Loading...</p>
